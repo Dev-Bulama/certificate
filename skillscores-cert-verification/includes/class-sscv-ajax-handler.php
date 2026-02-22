@@ -47,6 +47,8 @@ class SSCV_Ajax_Handler {
             'sscv_delete_template',
             'sscv_save_settings',
             'sscv_preview_template',
+            'sscv_seed_demo_data',
+            'sscv_reset_demo_data',
         );
 
         foreach ( $admin_actions as $action ) {
@@ -904,5 +906,49 @@ class SSCV_Ajax_Handler {
             'html' => $html,
             'css'  => $css,
         ) );
+    }
+
+    /**
+     * Seed demo data.
+     */
+    public function sscv_seed_demo_data() {
+        if ( ! SSCV_Security::verify_nonce( 'nonce', 'sscv_admin_nonce' ) || ! SSCV_Security::is_admin() ) {
+            wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'skillscores-cert' ) ) );
+        }
+
+        $result = SSCV_Demo_Data::seed();
+        $counts = SSCV_Demo_Data::get_counts();
+
+        $summary = sprintf(
+            __( 'Added %d students, %d courses, %d certificates, and %d projects.', 'skillscores-cert' ),
+            $result['students'],
+            $result['courses'],
+            $result['certificates'],
+            $result['projects']
+        );
+
+        wp_send_json_success( array(
+            'message' => __( 'Demo data loaded successfully.', 'skillscores-cert' ),
+            'summary' => $summary,
+            'seeded'  => $result,
+            'counts'  => $counts,
+        ) );
+    }
+
+    /**
+     * Reset all plugin data.
+     */
+    public function sscv_reset_demo_data() {
+        if ( ! SSCV_Security::verify_nonce( 'nonce', 'sscv_admin_nonce' ) || ! SSCV_Security::is_admin() ) {
+            wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'skillscores-cert' ) ) );
+        }
+
+        $reset = SSCV_Demo_Data::reset();
+
+        if ( $reset ) {
+            wp_send_json_success( array( 'message' => __( 'All data has been reset successfully.', 'skillscores-cert' ) ) );
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Reset failed.', 'skillscores-cert' ) ) );
+        }
     }
 }

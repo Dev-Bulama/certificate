@@ -67,6 +67,7 @@ final class SkillScores_Cert_Verification {
         require_once SSCV_PLUGIN_DIR . 'includes/class-sscv-shortcodes.php';
         require_once SSCV_PLUGIN_DIR . 'includes/class-sscv-ajax-handler.php';
         require_once SSCV_PLUGIN_DIR . 'includes/class-sscv-security.php';
+        require_once SSCV_PLUGIN_DIR . 'includes/class-sscv-demo-data.php';
 
         // Admin
         if ( is_admin() ) {

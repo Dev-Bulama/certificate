@@ -110,6 +110,15 @@ class SSCV_Admin {
             'sscv-settings',
             array( $this, 'page_settings' )
         );
+
+        add_submenu_page(
+            'sscv-dashboard',
+            __( 'Demo Data', 'skillscores-cert' ),
+            __( 'Demo Data', 'skillscores-cert' ),
+            'manage_options',
+            'sscv-demo-data',
+            array( $this, 'page_demo_data' )
+        );
     }
 
     /**
@@ -290,5 +299,14 @@ class SSCV_Admin {
     public function page_settings() {
         $settings = SSCV_Helpers::get_settings();
         include SSCV_PLUGIN_DIR . 'admin/views/settings.php';
+    }
+
+    /**
+     * Demo Data page.
+     */
+    public function page_demo_data() {
+        $demo_active = SSCV_Demo_Data::is_active();
+        $counts      = SSCV_Demo_Data::get_counts();
+        include SSCV_PLUGIN_DIR . 'admin/views/demo-data.php';
     }
 }

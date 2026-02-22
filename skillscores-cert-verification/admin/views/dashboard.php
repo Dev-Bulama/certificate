@@ -72,6 +72,9 @@
             <a href="<?php echo admin_url( 'admin.php?page=sscv-settings' ); ?>" class="button">
                 <span class="dashicons dashicons-admin-generic"></span> <?php esc_html_e( 'Settings', 'skillscores-cert' ); ?>
             </a>
+            <a href="<?php echo admin_url( 'admin.php?page=sscv-demo-data' ); ?>" class="button" style="border-color:#8b5cf6;color:#8b5cf6;">
+                <span class="dashicons dashicons-database-import"></span> <?php esc_html_e( 'Demo Data', 'skillscores-cert' ); ?>
+            </a>
         </div>
     </div>
 
