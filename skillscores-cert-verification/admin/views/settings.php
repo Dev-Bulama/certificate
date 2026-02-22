@@ -1,0 +1,143 @@
+<?php if ( ! defined( 'ABSPATH' ) ) exit; ?>
+<div class="wrap sscv-admin-wrap">
+    <h1><?php esc_html_e( 'Plugin Settings', 'skillscores-cert' ); ?></h1>
+
+    <form id="sscv-settings-form">
+        <input type="hidden" name="action" value="sscv_save_settings" />
+        <input type="hidden" name="nonce" value="<?php echo wp_create_nonce( 'sscv_admin_nonce' ); ?>" />
+
+        <!-- Institution Settings -->
+        <div class="sscv-card">
+            <h2><?php esc_html_e( 'Institution Settings', 'skillscores-cert' ); ?></h2>
+
+            <div class="sscv-field">
+                <label for="institution_name"><?php esc_html_e( 'Institution Name', 'skillscores-cert' ); ?></label>
+                <input type="text" name="institution_name" id="institution_name" class="regular-text"
+                       value="<?php echo esc_attr( $settings['institution_name'] ); ?>" />
+            </div>
+
+            <div class="sscv-field">
+                <label><?php esc_html_e( 'Institution Logo', 'skillscores-cert' ); ?></label>
+                <div class="sscv-media-field">
+                    <input type="text" name="logo_url" id="logo_url" class="regular-text"
+                           value="<?php echo esc_url( $settings['logo_url'] ); ?>" />
+                    <button type="button" class="button sscv-upload-media" data-target="logo_url"><?php esc_html_e( 'Upload', 'skillscores-cert' ); ?></button>
+                </div>
+                <?php if ( $settings['logo_url'] ) : ?>
+                    <img src="<?php echo esc_url( $settings['logo_url'] ); ?>" alt="" class="sscv-preview-image" style="max-height:60px;margin-top:8px;" />
+                <?php endif; ?>
+            </div>
+
+            <div class="sscv-field">
+                <label><?php esc_html_e( 'Certificate Signature Image', 'skillscores-cert' ); ?></label>
+                <div class="sscv-media-field">
+                    <input type="text" name="signature_url" id="signature_url" class="regular-text"
+                           value="<?php echo esc_url( $settings['signature_url'] ); ?>" />
+                    <button type="button" class="button sscv-upload-media" data-target="signature_url"><?php esc_html_e( 'Upload', 'skillscores-cert' ); ?></button>
+                </div>
+                <?php if ( $settings['signature_url'] ) : ?>
+                    <img src="<?php echo esc_url( $settings['signature_url'] ); ?>" alt="" class="sscv-preview-image" style="max-height:50px;margin-top:8px;" />
+                <?php endif; ?>
+            </div>
+
+            <div class="sscv-field">
+                <label><?php esc_html_e( 'Institution Stamp Image', 'skillscores-cert' ); ?></label>
+                <div class="sscv-media-field">
+                    <input type="text" name="stamp_url" id="stamp_url" class="regular-text"
+                           value="<?php echo esc_url( $settings['stamp_url'] ); ?>" />
+                    <button type="button" class="button sscv-upload-media" data-target="stamp_url"><?php esc_html_e( 'Upload', 'skillscores-cert' ); ?></button>
+                </div>
+                <?php if ( $settings['stamp_url'] ) : ?>
+                    <img src="<?php echo esc_url( $settings['stamp_url'] ); ?>" alt="" class="sscv-preview-image" style="max-height:60px;margin-top:8px;" />
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Appearance Settings -->
+        <div class="sscv-card">
+            <h2><?php esc_html_e( 'Appearance', 'skillscores-cert' ); ?></h2>
+
+            <div class="sscv-field-row">
+                <div class="sscv-field">
+                    <label for="theme_color"><?php esc_html_e( 'Theme Color', 'skillscores-cert' ); ?></label>
+                    <input type="text" name="theme_color" id="theme_color" class="sscv-color-picker"
+                           value="<?php echo esc_attr( $settings['theme_color'] ); ?>" />
+                </div>
+                <div class="sscv-field">
+                    <label for="accent_color"><?php esc_html_e( 'Accent Color', 'skillscores-cert' ); ?></label>
+                    <input type="text" name="accent_color" id="accent_color" class="sscv-color-picker"
+                           value="<?php echo esc_attr( $settings['accent_color'] ); ?>" />
+                </div>
+            </div>
+
+            <div class="sscv-field">
+                <label for="font_family"><?php esc_html_e( 'Font Family', 'skillscores-cert' ); ?></label>
+                <select name="font_family" id="font_family">
+                    <option value="Georgia, serif" <?php selected( $settings['font_family'], 'Georgia, serif' ); ?>>Georgia (Serif)</option>
+                    <option value="'Times New Roman', serif" <?php selected( $settings['font_family'], "'Times New Roman', serif" ); ?>>Times New Roman</option>
+                    <option value="Arial, sans-serif" <?php selected( $settings['font_family'], 'Arial, sans-serif' ); ?>>Arial (Sans-serif)</option>
+                    <option value="'Segoe UI', sans-serif" <?php selected( $settings['font_family'], "'Segoe UI', sans-serif" ); ?>>Segoe UI</option>
+                    <option value="'Helvetica Neue', sans-serif" <?php selected( $settings['font_family'], "'Helvetica Neue', sans-serif" ); ?>>Helvetica Neue</option>
+                    <option value="Verdana, sans-serif" <?php selected( $settings['font_family'], 'Verdana, sans-serif' ); ?>>Verdana</option>
+                </select>
+            </div>
+
+            <div class="sscv-field">
+                <label for="qr_size"><?php esc_html_e( 'QR Code Size (px)', 'skillscores-cert' ); ?></label>
+                <input type="number" name="qr_size" id="qr_size" min="50" max="500"
+                       value="<?php echo esc_attr( $settings['qr_size'] ); ?>" />
+            </div>
+        </div>
+
+        <!-- Email Settings -->
+        <div class="sscv-card">
+            <h2><?php esc_html_e( 'Email Notification', 'skillscores-cert' ); ?></h2>
+
+            <div class="sscv-field">
+                <label for="email_subject"><?php esc_html_e( 'Email Subject', 'skillscores-cert' ); ?></label>
+                <input type="text" name="email_subject" id="email_subject" class="large-text"
+                       value="<?php echo esc_attr( $settings['email_subject'] ); ?>" />
+                <p class="description"><?php esc_html_e( 'Use placeholders: {{student_name}}, {{course_title}}, {{certificate_id}}', 'skillscores-cert' ); ?></p>
+            </div>
+
+            <div class="sscv-field">
+                <label for="email_body"><?php esc_html_e( 'Email Body', 'skillscores-cert' ); ?></label>
+                <textarea name="email_body" id="email_body" rows="10" class="large-text"><?php echo esc_textarea( $settings['email_body'] ); ?></textarea>
+                <p class="description"><?php esc_html_e( 'Available: {{student_name}}, {{course_title}}, {{certificate_id}}, {{date_issued}}, {{grade}}, {{institution_name}}, {{verification_url}}', 'skillscores-cert' ); ?></p>
+            </div>
+        </div>
+
+        <!-- Security Settings -->
+        <div class="sscv-card">
+            <h2><?php esc_html_e( 'Security (reCAPTCHA v3)', 'skillscores-cert' ); ?></h2>
+
+            <div class="sscv-field">
+                <label for="recaptcha_site_key"><?php esc_html_e( 'reCAPTCHA Site Key', 'skillscores-cert' ); ?></label>
+                <input type="text" name="recaptcha_site_key" id="recaptcha_site_key" class="regular-text"
+                       value="<?php echo esc_attr( $settings['recaptcha_site_key'] ); ?>" />
+            </div>
+
+            <div class="sscv-field">
+                <label for="recaptcha_secret_key"><?php esc_html_e( 'reCAPTCHA Secret Key', 'skillscores-cert' ); ?></label>
+                <input type="text" name="recaptcha_secret_key" id="recaptcha_secret_key" class="regular-text"
+                       value="<?php echo esc_attr( $settings['recaptcha_secret_key'] ); ?>" />
+            </div>
+
+            <p class="description"><?php esc_html_e( 'Leave empty to disable reCAPTCHA protection.', 'skillscores-cert' ); ?></p>
+        </div>
+
+        <!-- Project Categories -->
+        <div class="sscv-card">
+            <h2><?php esc_html_e( 'Project Categories', 'skillscores-cert' ); ?></h2>
+
+            <div class="sscv-field">
+                <label for="project_categories"><?php esc_html_e( 'Categories (one per line)', 'skillscores-cert' ); ?></label>
+                <textarea name="project_categories" id="project_categories" rows="6" class="large-text"><?php echo esc_textarea( get_option( 'sscv_project_categories', "Web Development\nMobile App\nData Science\nCybersecurity\nAI/ML\nDesign\nOther" ) ); ?></textarea>
+            </div>
+        </div>
+
+        <p class="submit">
+            <button type="submit" class="button button-primary button-large"><?php esc_html_e( 'Save All Settings', 'skillscores-cert' ); ?></button>
+        </p>
+    </form>
+</div>
