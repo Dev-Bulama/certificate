@@ -51,10 +51,12 @@ $settings = SSCV_Helpers::get_settings();
                     <input type="date" id="sscv-date-completed" name="date_completed" />
                 </div>
 
+                <?php if ( get_option( 'sscv_grade_field_enabled', '1' ) === '1' ) : ?>
                 <div class="sscv-form-group">
                     <label for="sscv-grade"><?php esc_html_e( 'Grade / Score', 'skillscores-cert' ); ?></label>
                     <input type="text" id="sscv-grade" name="grade" placeholder="<?php esc_attr_e( 'e.g., A, 95%, Distinction', 'skillscores-cert' ); ?>" />
                 </div>
+                <?php endif; ?>
             </div>
 
             <div class="sscv-form-group sscv-form-full">

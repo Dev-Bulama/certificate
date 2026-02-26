@@ -299,5 +299,34 @@
             });
         });
 
+        // ========================
+        // Bulk Export PDF
+        // ========================
+        $('#sscv-bulk-export-pdf').on('click', function() {
+            var btn = $(this);
+
+            if (!confirm('This will generate a single PDF containing all approved certificates. This may take a moment. Continue?')) {
+                return;
+            }
+
+            btn.prop('disabled', true).text('Generating PDF...');
+
+            $.post(sscv_admin.ajax_url, {
+                action: 'sscv_bulk_export_pdf',
+                nonce: sscv_admin.nonce
+            }, function(response) {
+                if (response.success) {
+                    alert(response.data.message);
+                    window.open(response.data.pdf_url, '_blank');
+                } else {
+                    alert(response.data.message || 'Export failed.');
+                }
+                btn.prop('disabled', false).text('Export All Approved as PDF');
+            }).fail(function() {
+                alert('Request failed. Please try again.');
+                btn.prop('disabled', false).text('Export All Approved as PDF');
+            });
+        });
+
     });
 })(jQuery);

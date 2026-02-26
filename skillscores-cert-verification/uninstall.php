@@ -40,6 +40,7 @@ $options = array(
     'sscv_recaptcha_site_key',
     'sscv_recaptcha_secret_key',
     'sscv_project_categories',
+    'sscv_grade_field_enabled',
 );
 
 foreach ( $options as $option ) {

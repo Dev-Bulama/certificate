@@ -53,6 +53,20 @@
             </div>
         </div>
 
+        <!-- Form Fields Settings -->
+        <div class="sscv-card">
+            <h2><?php esc_html_e( 'Application Form Fields', 'skillscores-cert' ); ?></h2>
+
+            <div class="sscv-field">
+                <label for="enable_grade_field">
+                    <input type="checkbox" name="enable_grade_field" id="enable_grade_field" value="1"
+                           <?php checked( $settings['grade_field_enabled'], '1' ); ?> />
+                    <?php esc_html_e( 'Enable Grade / Score field on the certificate application form', 'skillscores-cert' ); ?>
+                </label>
+                <p class="description"><?php esc_html_e( 'When disabled, the Grade field will be hidden from the application form and certificate templates.', 'skillscores-cert' ); ?></p>
+            </div>
+        </div>
+
         <!-- Appearance Settings -->
         <div class="sscv-card">
             <h2><?php esc_html_e( 'Appearance', 'skillscores-cert' ); ?></h2>

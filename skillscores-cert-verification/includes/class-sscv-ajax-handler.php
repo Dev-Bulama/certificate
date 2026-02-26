@@ -49,6 +49,7 @@ class SSCV_Ajax_Handler {
             'sscv_preview_template',
             'sscv_seed_demo_data',
             'sscv_reset_demo_data',
+            'sscv_bulk_export_pdf',
         );
 
         foreach ( $admin_actions as $action ) {
@@ -778,8 +779,10 @@ class SSCV_Ajax_Handler {
 
         $template_id   = intval( $_POST['template_id'] ?? 0 );
         $template_name = sanitize_text_field( $_POST['template_name'] ?? '' );
-        $html_content  = wp_kses_post( $_POST['html_content'] ?? '' );
-        $css_content   = sanitize_textarea_field( $_POST['css_content'] ?? '' );
+        // Store raw HTML for templates — admin-only with capability check above.
+        // wp_kses_post strips style attributes, classes, and tags needed for custom certificate designs.
+        $html_content  = wp_unslash( $_POST['html_content'] ?? '' );
+        $css_content   = wp_unslash( $_POST['css_content'] ?? '' );
         $is_default    = intval( $_POST['is_default'] ?? 0 );
 
         if ( empty( $template_name ) ) {
@@ -862,6 +865,9 @@ class SSCV_Ajax_Handler {
             }
         }
 
+        // Handle checkbox fields (unchecked = not sent in POST)
+        update_option( 'sscv_grade_field_enabled', isset( $_POST['enable_grade_field'] ) ? '1' : '0' );
+
         // Flush rewrite rules in case verification page settings changed
         flush_rewrite_rules();
 
@@ -876,8 +882,8 @@ class SSCV_Ajax_Handler {
             wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'skillscores-cert' ) ) );
         }
 
-        $html = wp_kses_post( $_POST['html_content'] ?? '' );
-        $css  = sanitize_textarea_field( $_POST['css_content'] ?? '' );
+        $html = wp_unslash( $_POST['html_content'] ?? '' );
+        $css  = wp_unslash( $_POST['css_content'] ?? '' );
 
         $settings = SSCV_Helpers::get_settings();
 
@@ -950,5 +956,36 @@ class SSCV_Ajax_Handler {
         } else {
             wp_send_json_error( array( 'message' => __( 'Reset failed.', 'skillscores-cert' ) ) );
         }
+    }
+
+    /**
+     * Bulk export all approved certificates as one PDF.
+     */
+    public function sscv_bulk_export_pdf() {
+        if ( ! SSCV_Security::verify_nonce( 'nonce', 'sscv_admin_nonce' ) || ! SSCV_Security::is_admin() ) {
+            wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'skillscores-cert' ) ) );
+        }
+
+        global $wpdb;
+
+        $certificates = $wpdb->get_results(
+            "SELECT certificate_id FROM {$wpdb->prefix}sscv_certificates WHERE status = 'approved' ORDER BY created_at DESC"
+        );
+
+        if ( empty( $certificates ) ) {
+            wp_send_json_error( array( 'message' => __( 'No approved certificates to export.', 'skillscores-cert' ) ) );
+        }
+
+        $result = SSCV_PDF_Generator::generate_bulk( $certificates );
+
+        if ( ! $result ) {
+            wp_send_json_error( array( 'message' => __( 'Failed to generate bulk PDF.', 'skillscores-cert' ) ) );
+        }
+
+        wp_send_json_success( array(
+            'message'  => sprintf( __( 'Exported %d certificates.', 'skillscores-cert' ), count( $certificates ) ),
+            'pdf_url'  => $result['url'],
+            'count'    => count( $certificates ),
+        ) );
     }
 }

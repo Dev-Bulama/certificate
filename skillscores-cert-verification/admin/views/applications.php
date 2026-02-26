@@ -16,6 +16,9 @@
                 </select>
                 <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'Search by name, email, or cert ID...', 'skillscores-cert' ); ?>" />
                 <button type="submit" class="button"><?php esc_html_e( 'Filter', 'skillscores-cert' ); ?></button>
+                <button type="button" class="button button-primary" id="sscv-bulk-export-pdf" style="margin-left:10px;">
+                    <?php esc_html_e( 'Export All Approved as PDF', 'skillscores-cert' ); ?>
+                </button>
             </div>
         </form>
     </div>

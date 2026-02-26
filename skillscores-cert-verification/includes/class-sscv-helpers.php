@@ -48,6 +48,7 @@ class SSCV_Helpers {
             'email_body'       => get_option( 'sscv_email_body', '' ),
             'recaptcha_site_key'   => get_option( 'sscv_recaptcha_site_key', '' ),
             'recaptcha_secret_key' => get_option( 'sscv_recaptcha_secret_key', '' ),
+            'grade_field_enabled'  => get_option( 'sscv_grade_field_enabled', '1' ),
         );
     }
 
