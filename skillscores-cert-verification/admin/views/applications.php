@@ -59,6 +59,12 @@
                         <td><?php echo esc_html( SSCV_Helpers::format_date( $app->created_at ) ); ?></td>
                         <td class="sscv-actions">
                             <?php if ( $app->status === 'pending' ) : ?>
+                                <button class="button button-small sscv-preview-cert" data-id="<?php echo esc_attr( $app->id ); ?>" data-name="<?php echo esc_attr( $app->full_name ); ?>">
+                                    <?php esc_html_e( 'Preview', 'skillscores-cert' ); ?>
+                                </button>
+                                <button class="button button-small sscv-edit-cert-name" data-id="<?php echo esc_attr( $app->id ); ?>" data-name="<?php echo esc_attr( $app->full_name ); ?>">
+                                    <?php esc_html_e( 'Edit Name', 'skillscores-cert' ); ?>
+                                </button>
                                 <button class="button button-primary button-small sscv-approve-cert" data-id="<?php echo esc_attr( $app->id ); ?>">
                                     <?php esc_html_e( 'Approve', 'skillscores-cert' ); ?>
                                 </button>
@@ -110,6 +116,43 @@
                 <button class="button sscv-modal-close"><?php esc_html_e( 'Cancel', 'skillscores-cert' ); ?></button>
             </div>
             <input type="hidden" id="sscv-reject-cert-id" value="" />
+        </div>
+    </div>
+
+    <!-- Certificate Preview Modal -->
+    <div id="sscv-preview-modal" class="sscv-modal" style="display:none;">
+        <div class="sscv-modal-content sscv-modal-large">
+            <div class="sscv-modal-header">
+                <h3><?php esc_html_e( 'Certificate Preview', 'skillscores-cert' ); ?></h3>
+                <button type="button" class="sscv-modal-close-btn sscv-modal-close">&times;</button>
+            </div>
+            <div id="sscv-preview-loading" style="text-align:center;padding:40px;">
+                <p><?php esc_html_e( 'Loading preview...', 'skillscores-cert' ); ?></p>
+            </div>
+            <div id="sscv-certificate-preview" class="sscv-preview-frame" style="display:none;"></div>
+            <div class="sscv-modal-actions">
+                <button class="button button-primary" id="sscv-preview-approve"><?php esc_html_e( 'Approve Certificate', 'skillscores-cert' ); ?></button>
+                <button class="button" id="sscv-preview-edit-name"><?php esc_html_e( 'Edit Name', 'skillscores-cert' ); ?></button>
+                <button class="button sscv-modal-close"><?php esc_html_e( 'Close', 'skillscores-cert' ); ?></button>
+            </div>
+            <input type="hidden" id="sscv-preview-cert-id" value="" />
+        </div>
+    </div>
+
+    <!-- Edit Name Modal -->
+    <div id="sscv-edit-name-modal" class="sscv-modal" style="display:none;">
+        <div class="sscv-modal-content">
+            <h3><?php esc_html_e( 'Edit Certificate Name', 'skillscores-cert' ); ?></h3>
+            <p class="description"><?php esc_html_e( 'Correct the name that will appear on the certificate.', 'skillscores-cert' ); ?></p>
+            <div class="sscv-field" style="margin-top:12px;">
+                <label for="sscv-edit-name-input"><?php esc_html_e( 'Full Name', 'skillscores-cert' ); ?></label>
+                <input type="text" id="sscv-edit-name-input" class="large-text" value="" />
+            </div>
+            <div class="sscv-modal-actions">
+                <button class="button button-primary" id="sscv-confirm-edit-name"><?php esc_html_e( 'Save Name', 'skillscores-cert' ); ?></button>
+                <button class="button sscv-modal-close"><?php esc_html_e( 'Cancel', 'skillscores-cert' ); ?></button>
+            </div>
+            <input type="hidden" id="sscv-edit-name-cert-id" value="" />
         </div>
     </div>
 </div>

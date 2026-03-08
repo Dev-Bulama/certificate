@@ -75,7 +75,7 @@
         });
 
         $(document).on('click', '.sscv-modal-close', function() {
-            $('#sscv-reject-modal').hide();
+            $(this).closest('.sscv-modal').hide();
             rejectCertId = null;
         });
 
@@ -96,6 +96,127 @@
                     alert(response.data.message || 'Error occurred.');
                     btn.prop('disabled', false).text('Confirm Rejection');
                 }
+            });
+        });
+
+        // ========================
+        // Certificate Preview
+        // ========================
+        var previewCertId = null;
+
+        $(document).on('click', '.sscv-preview-cert', function() {
+            var btn = $(this);
+            previewCertId = btn.data('id');
+            $('#sscv-preview-cert-id').val(previewCertId);
+            $('#sscv-preview-loading').show();
+            $('#sscv-certificate-preview').hide().empty();
+            $('#sscv-preview-modal').show();
+
+            $.post(sscv_admin.ajax_url, {
+                action: 'sscv_preview_certificate',
+                nonce: sscv_admin.nonce,
+                cert_id: previewCertId
+            }, function(response) {
+                $('#sscv-preview-loading').hide();
+                if (response.success) {
+                    var previewHtml = '<style>' + response.data.css + '</style>' + response.data.html;
+                    $('#sscv-certificate-preview').html(previewHtml).show();
+                } else {
+                    $('#sscv-certificate-preview').html('<p style="color:#dc3232;padding:20px;">' + (response.data.message || 'Failed to load preview.') + '</p>').show();
+                }
+            }).fail(function() {
+                $('#sscv-preview-loading').hide();
+                $('#sscv-certificate-preview').html('<p style="color:#dc3232;padding:20px;">Request failed. Please try again.</p>').show();
+            });
+        });
+
+        // Approve from preview modal
+        $('#sscv-preview-approve').on('click', function() {
+            var certId = $('#sscv-preview-cert-id').val();
+            if (!certId) return;
+
+            if (!confirm('Are you sure you want to approve this certificate? This will generate the certificate and send it to the student.')) {
+                return;
+            }
+
+            var btn = $(this);
+            btn.prop('disabled', true).text('Processing...');
+
+            $.post(sscv_admin.ajax_url, {
+                action: 'sscv_approve_certificate',
+                nonce: sscv_admin.nonce,
+                cert_id: certId
+            }, function(response) {
+                if (response.success) {
+                    alert(response.data.message);
+                    location.reload();
+                } else {
+                    alert(response.data.message || 'Error occurred.');
+                    btn.prop('disabled', false).text('Approve Certificate');
+                }
+            }).fail(function() {
+                alert('Request failed. Please try again.');
+                btn.prop('disabled', false).text('Approve Certificate');
+            });
+        });
+
+        // Open edit name from preview modal
+        $('#sscv-preview-edit-name').on('click', function() {
+            var certId = $('#sscv-preview-cert-id').val();
+            // Find the name from the table row
+            var rowName = $('#cert-row-' + certId).find('td:eq(2) strong').text();
+            $('#sscv-edit-name-cert-id').val(certId);
+            $('#sscv-edit-name-input').val(rowName);
+            $('#sscv-preview-modal').hide();
+            $('#sscv-edit-name-modal').show();
+        });
+
+        // ========================
+        // Edit Certificate Name
+        // ========================
+        $(document).on('click', '.sscv-edit-cert-name', function() {
+            var btn = $(this);
+            var certId = btn.data('id');
+            var currentName = btn.data('name');
+            $('#sscv-edit-name-cert-id').val(certId);
+            $('#sscv-edit-name-input').val(currentName);
+            $('#sscv-edit-name-modal').show();
+        });
+
+        $('#sscv-confirm-edit-name').on('click', function() {
+            var btn = $(this);
+            var certId = $('#sscv-edit-name-cert-id').val();
+            var newName = $('#sscv-edit-name-input').val().trim();
+
+            if (!newName) {
+                alert('Please enter a name.');
+                return;
+            }
+
+            btn.prop('disabled', true).text('Saving...');
+
+            $.post(sscv_admin.ajax_url, {
+                action: 'sscv_update_certificate_name',
+                nonce: sscv_admin.nonce,
+                cert_id: certId,
+                full_name: newName
+            }, function(response) {
+                if (response.success) {
+                    // Update the name in the table row
+                    var row = $('#cert-row-' + certId);
+                    row.find('td:eq(2) strong').text(response.data.full_name);
+                    // Update data attribute on buttons
+                    row.find('.sscv-edit-cert-name').data('name', response.data.full_name).attr('data-name', response.data.full_name);
+                    row.find('.sscv-preview-cert').data('name', response.data.full_name).attr('data-name', response.data.full_name);
+                    alert(response.data.message);
+                    $('#sscv-edit-name-modal').hide();
+                } else {
+                    alert(response.data.message || 'Error occurred.');
+                }
+                btn.prop('disabled', false).text('Save Name');
+            }).fail(function() {
+                alert('Request failed. Please try again.');
+                btn.prop('disabled', false).text('Save Name');
             });
         });
 

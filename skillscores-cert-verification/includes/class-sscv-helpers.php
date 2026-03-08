@@ -48,7 +48,9 @@ class SSCV_Helpers {
             'email_body'       => get_option( 'sscv_email_body', '' ),
             'recaptcha_site_key'   => get_option( 'sscv_recaptcha_site_key', '' ),
             'recaptcha_secret_key' => get_option( 'sscv_recaptcha_secret_key', '' ),
-            'grade_field_enabled'  => get_option( 'sscv_grade_field_enabled', '1' ),
+            'grade_field_enabled'      => get_option( 'sscv_grade_field_enabled', '1' ),
+            'student_id_field_enabled' => get_option( 'sscv_student_id_field_enabled', '1' ),
+            'passport_field_enabled'   => get_option( 'sscv_passport_field_enabled', '1' ),
         );
     }
 

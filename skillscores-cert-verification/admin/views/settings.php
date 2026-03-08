@@ -58,12 +58,30 @@
             <h2><?php esc_html_e( 'Application Form Fields', 'skillscores-cert' ); ?></h2>
 
             <div class="sscv-field">
+                <label for="enable_student_id_field">
+                    <input type="checkbox" name="enable_student_id_field" id="enable_student_id_field" value="1"
+                           <?php checked( $settings['student_id_field_enabled'], '1' ); ?> />
+                    <?php esc_html_e( 'Enable Student ID field on the certificate application form', 'skillscores-cert' ); ?>
+                </label>
+                <p class="description"><?php esc_html_e( 'When disabled, the Student ID field will be hidden from the application form.', 'skillscores-cert' ); ?></p>
+            </div>
+
+            <div class="sscv-field">
                 <label for="enable_grade_field">
                     <input type="checkbox" name="enable_grade_field" id="enable_grade_field" value="1"
                            <?php checked( $settings['grade_field_enabled'], '1' ); ?> />
                     <?php esc_html_e( 'Enable Grade / Score field on the certificate application form', 'skillscores-cert' ); ?>
                 </label>
                 <p class="description"><?php esc_html_e( 'When disabled, the Grade field will be hidden from the application form and certificate templates.', 'skillscores-cert' ); ?></p>
+            </div>
+
+            <div class="sscv-field">
+                <label for="enable_passport_field">
+                    <input type="checkbox" name="enable_passport_field" id="enable_passport_field" value="1"
+                           <?php checked( $settings['passport_field_enabled'], '1' ); ?> />
+                    <?php esc_html_e( 'Enable Passport Photograph field on the certificate application form', 'skillscores-cert' ); ?>
+                </label>
+                <p class="description"><?php esc_html_e( 'When disabled, the Passport Photograph upload will be hidden from the application form and certificate templates.', 'skillscores-cert' ); ?></p>
             </div>
         </div>
 

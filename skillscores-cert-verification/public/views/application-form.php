@@ -28,10 +28,12 @@ $settings = SSCV_Helpers::get_settings();
                     <input type="email" id="sscv-email" name="email" required placeholder="<?php esc_attr_e( 'Enter your email', 'skillscores-cert' ); ?>" />
                 </div>
 
+                <?php if ( get_option( 'sscv_student_id_field_enabled', '1' ) === '1' ) : ?>
                 <div class="sscv-form-group">
                     <label for="sscv-student-id"><?php esc_html_e( 'Student ID *', 'skillscores-cert' ); ?></label>
                     <input type="text" id="sscv-student-id" name="student_id_number" required placeholder="<?php esc_attr_e( 'Enter your Student ID', 'skillscores-cert' ); ?>" />
                 </div>
+                <?php endif; ?>
 
                 <div class="sscv-form-group">
                     <label for="sscv-course"><?php esc_html_e( 'Course Taken *', 'skillscores-cert' ); ?></label>
@@ -59,6 +61,7 @@ $settings = SSCV_Helpers::get_settings();
                 <?php endif; ?>
             </div>
 
+            <?php if ( get_option( 'sscv_passport_field_enabled', '1' ) === '1' ) : ?>
             <div class="sscv-form-group sscv-form-full">
                 <label for="sscv-passport"><?php esc_html_e( 'Passport Photograph', 'skillscores-cert' ); ?></label>
                 <div class="sscv-file-upload">
@@ -66,6 +69,7 @@ $settings = SSCV_Helpers::get_settings();
                     <p class="sscv-file-hint"><?php esc_html_e( 'JPG or PNG, max 1MB', 'skillscores-cert' ); ?></p>
                 </div>
             </div>
+            <?php endif; ?>
 
             <?php if ( ! empty( $recaptcha_key ) ) : ?>
                 <input type="hidden" name="recaptcha_token" id="sscv-recaptcha-token" />

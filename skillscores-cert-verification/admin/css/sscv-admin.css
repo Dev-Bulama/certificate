@@ -284,6 +284,41 @@
     justify-content: flex-end;
 }
 
+/* Large Modal (Certificate Preview) */
+.sscv-modal-large {
+    max-width: 900px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.sscv-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.sscv-modal-header h3 {
+    margin: 0;
+}
+
+.sscv-modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0 5px;
+    line-height: 1;
+}
+
+.sscv-modal-close-btn:hover {
+    color: #1f2937;
+}
+
 /* Template Editor */
 .sscv-placeholder-ref {
     background: #f8f9fa;

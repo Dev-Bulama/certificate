@@ -50,6 +50,8 @@ class SSCV_Ajax_Handler {
             'sscv_seed_demo_data',
             'sscv_reset_demo_data',
             'sscv_bulk_export_pdf',
+            'sscv_preview_certificate',
+            'sscv_update_certificate_name',
         );
 
         foreach ( $admin_actions as $action ) {
@@ -90,8 +92,14 @@ class SSCV_Ajax_Handler {
         $data = SSCV_Security::sanitize_input( $_POST, $fields );
 
         // Validate required fields
-        if ( empty( $data['full_name'] ) || empty( $data['email'] ) || empty( $data['course_id'] ) || empty( $data['student_id_number'] ) ) {
+        $student_id_required = get_option( 'sscv_student_id_field_enabled', '1' ) === '1';
+        if ( empty( $data['full_name'] ) || empty( $data['email'] ) || empty( $data['course_id'] ) || ( $student_id_required && empty( $data['student_id_number'] ) ) ) {
             wp_send_json_error( array( 'message' => __( 'Please fill in all required fields.', 'skillscores-cert' ) ) );
+        }
+
+        // Auto-generate student ID if field is disabled
+        if ( ! $student_id_required && empty( $data['student_id_number'] ) ) {
+            $data['student_id_number'] = 'AUTO-' . strtoupper( wp_generate_password( 8, false, false ) );
         }
 
         if ( ! SSCV_Helpers::validate_email( $data['email'] ) ) {
@@ -866,7 +874,9 @@ class SSCV_Ajax_Handler {
         }
 
         // Handle checkbox fields (unchecked = not sent in POST)
+        update_option( 'sscv_student_id_field_enabled', isset( $_POST['enable_student_id_field'] ) ? '1' : '0' );
         update_option( 'sscv_grade_field_enabled', isset( $_POST['enable_grade_field'] ) ? '1' : '0' );
+        update_option( 'sscv_passport_field_enabled', isset( $_POST['enable_passport_field'] ) ? '1' : '0' );
 
         // Flush rewrite rules in case verification page settings changed
         flush_rewrite_rules();
@@ -956,6 +966,85 @@ class SSCV_Ajax_Handler {
         } else {
             wp_send_json_error( array( 'message' => __( 'Reset failed.', 'skillscores-cert' ) ) );
         }
+    }
+
+    /**
+     * Preview certificate before approval.
+     */
+    public function sscv_preview_certificate() {
+        if ( ! SSCV_Security::verify_nonce( 'nonce', 'sscv_admin_nonce' ) || ! SSCV_Security::is_admin() ) {
+            wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'skillscores-cert' ) ) );
+        }
+
+        $cert_db_id = intval( $_POST['cert_id'] ?? 0 );
+        if ( ! $cert_db_id ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid certificate.', 'skillscores-cert' ) ) );
+        }
+
+        global $wpdb;
+
+        $cert = $wpdb->get_row( $wpdb->prepare(
+            "SELECT c.*, co.course_title, co.course_code, s.student_id as student_id_number
+             FROM {$wpdb->prefix}sscv_certificates c
+             LEFT JOIN {$wpdb->prefix}sscv_courses co ON c.course_id = co.id
+             LEFT JOIN {$wpdb->prefix}sscv_students s ON c.student_id = s.id
+             WHERE c.id = %d",
+            $cert_db_id
+        ) );
+
+        if ( ! $cert ) {
+            wp_send_json_error( array( 'message' => __( 'Certificate not found.', 'skillscores-cert' ) ) );
+        }
+
+        // Render the certificate preview using the engine
+        $rendered = SSCV_Certificate_Engine::render( $cert->certificate_id );
+
+        if ( ! $rendered ) {
+            wp_send_json_error( array( 'message' => __( 'Could not render certificate preview. Please check that a template is configured.', 'skillscores-cert' ) ) );
+        }
+
+        wp_send_json_success( array(
+            'html'      => $rendered['html'],
+            'css'       => $rendered['css'],
+            'full_name' => $cert->full_name,
+            'cert_id'   => $cert->id,
+        ) );
+    }
+
+    /**
+     * Update certificate name (admin correction before approval).
+     */
+    public function sscv_update_certificate_name() {
+        if ( ! SSCV_Security::verify_nonce( 'nonce', 'sscv_admin_nonce' ) || ! SSCV_Security::is_admin() ) {
+            wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'skillscores-cert' ) ) );
+        }
+
+        $cert_db_id = intval( $_POST['cert_id'] ?? 0 );
+        $new_name   = sanitize_text_field( $_POST['full_name'] ?? '' );
+
+        if ( ! $cert_db_id || empty( $new_name ) ) {
+            wp_send_json_error( array( 'message' => __( 'Certificate ID and name are required.', 'skillscores-cert' ) ) );
+        }
+
+        global $wpdb;
+
+        // Update the name in the certificates table
+        $updated = $wpdb->update(
+            $wpdb->prefix . 'sscv_certificates',
+            array( 'full_name' => $new_name ),
+            array( 'id' => $cert_db_id ),
+            array( '%s' ),
+            array( '%d' )
+        );
+
+        if ( $updated === false ) {
+            wp_send_json_error( array( 'message' => __( 'Failed to update name.', 'skillscores-cert' ) ) );
+        }
+
+        wp_send_json_success( array(
+            'message'   => __( 'Name updated successfully.', 'skillscores-cert' ),
+            'full_name' => $new_name,
+        ) );
     }
 
     /**
