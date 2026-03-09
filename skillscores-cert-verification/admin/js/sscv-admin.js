@@ -631,9 +631,15 @@
             });
         });
 
-        // Upload image for image template
+        // Upload image for image template via WP Media Library
         $(document).on('click', '#sscv-img-upload-btn', function(e) {
             e.preventDefault();
+
+            if (typeof wp === 'undefined' || typeof wp.media === 'undefined') {
+                alert('WordPress Media Library is not available. Please use the direct URL input instead.');
+                return;
+            }
+
             var frame = wp.media({
                 title: 'Select Certificate Background Image',
                 button: { text: 'Use this image' },
@@ -644,11 +650,47 @@
             frame.on('select', function() {
                 var attachment = frame.state().get('selection').first().toJSON();
                 $('#sscv-img-template-url').val(attachment.url);
-                $('#sscv-img-template-canvas').css('background-image', 'url(' + attachment.url + ')').show();
+                $('#sscv-img-template-url-input').val(attachment.url);
+                sscvShowImageCanvas(attachment.url);
             });
 
             frame.open();
         });
+
+        // Sync direct URL input to hidden field and show canvas
+        $(document).on('input change paste', '#sscv-img-template-url-input', function() {
+            var url = $(this).val().trim();
+            $('#sscv-img-template-url').val(url);
+            if (url) {
+                sscvShowImageCanvas(url);
+            }
+        });
+
+        // Also handle blur for pasted URLs
+        $(document).on('blur', '#sscv-img-template-url-input', function() {
+            var url = $(this).val().trim();
+            $('#sscv-img-template-url').val(url);
+            if (url) {
+                sscvShowImageCanvas(url);
+            }
+        });
+
+        // Helper: show canvas with background image
+        function sscvShowImageCanvas(url) {
+            var canvas = $('#sscv-img-template-canvas');
+            canvas.css('background-image', 'url(' + url + ')');
+            canvas.show();
+        }
+
+        // Show canvas on page load if URL already has a value
+        (function() {
+            var existingUrl = $('#sscv-img-template-url').val() || $('#sscv-img-template-url-input').val();
+            if (existingUrl && existingUrl.trim()) {
+                sscvShowImageCanvas(existingUrl.trim());
+                $('#sscv-img-template-url').val(existingUrl.trim());
+                $('#sscv-img-template-url-input').val(existingUrl.trim());
+            }
+        })();
 
     });
 })(jQuery);

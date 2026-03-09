@@ -76,7 +76,7 @@
         <h2><?php esc_html_e( 'Image-Based Certificate Template', 'skillscores-cert' ); ?></h2>
         <p class="description"><?php esc_html_e( 'Upload a certificate background image and drag-and-drop variable fields onto it to position them.', 'skillscores-cert' ); ?></p>
 
-        <form id="sscv-image-template-form" style="margin-top:15px;">
+        <form id="sscv-image-template-form" style="margin-top:15px;" onsubmit="return false;">
             <input type="hidden" id="sscv-img-template-id" value="" />
             <input type="hidden" id="sscv-img-template-url" value="" />
             <input type="hidden" id="sscv-img-field-positions" value="{}" />
@@ -120,8 +120,8 @@
             </div>
 
             <!-- Canvas Area -->
-            <div id="sscv-img-template-canvas" class="sscv-img-canvas" style="display:none;">
-                <p class="sscv-img-canvas-hint"><?php esc_html_e( 'Click fields above to add them, then drag to position.', 'skillscores-cert' ); ?></p>
+            <div id="sscv-img-template-canvas" class="sscv-img-canvas">
+                <p class="sscv-img-canvas-hint"><?php esc_html_e( 'Upload or enter a background image URL above, then click fields to add them and drag to position.', 'skillscores-cert' ); ?></p>
             </div>
 
             <div class="sscv-field sscv-field-actions" style="margin-top:15px;">
