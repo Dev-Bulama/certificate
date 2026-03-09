@@ -71,7 +71,7 @@ class SSCV_PDF_Generator {
 
         foreach ( $certificates as $certRef ) {
             $cert = SSCV_Helpers::get_certificate( $certRef->certificate_id );
-            if ( ! $cert || $cert->status !== 'approved' ) {
+            if ( ! $cert ) {
                 continue;
             }
 
@@ -112,9 +112,211 @@ class SSCV_PDF_Generator {
     }
 
     /**
+     * Resolve the correct template for a certificate.
+     * Priority: cert template_id → course template_id → default template.
+     */
+    private static function resolve_template( $cert ) {
+        global $wpdb;
+
+        $template_id = $cert->template_id;
+
+        if ( ! $template_id ) {
+            $template_id = $wpdb->get_var( $wpdb->prepare(
+                "SELECT template_id FROM {$wpdb->prefix}sscv_courses WHERE id = %d",
+                $cert->course_id
+            ) );
+        }
+
+        if ( ! $template_id ) {
+            $template_id = $wpdb->get_var(
+                "SELECT id FROM {$wpdb->prefix}sscv_certificate_templates WHERE is_default = 1 LIMIT 1"
+            );
+        }
+
+        if ( ! $template_id ) {
+            return null;
+        }
+
+        $template = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}sscv_certificate_templates WHERE id = %d",
+            $template_id
+        ) );
+
+        return $template;
+    }
+
+    /**
      * Render one certificate page onto the PDF builder.
+     * Uses the correct resolved template (image-based or HTML-based).
      */
     private static function render_certificate_page( $pdf, $cert, $settings ) {
+        // Resolve the correct template for this certificate
+        $template = self::resolve_template( $cert );
+
+        // Check if this is an image-based template
+        if ( $template && SSCV_Helpers::is_image_template( $template->id ) ) {
+            self::render_image_template_page( $pdf, $cert, $settings, $template );
+            return;
+        }
+
+        // For HTML templates, try to render the template HTML as an image
+        if ( $template && ! empty( $template->html_content ) ) {
+            $rendered = SSCV_Certificate_Engine::render( $cert->certificate_id );
+            if ( $rendered && self::render_html_as_image_page( $pdf, $rendered ) ) {
+                return;
+            }
+        }
+
+        // Fallback: use the default hardcoded layout
+        self::render_default_certificate_page( $pdf, $cert, $settings );
+    }
+
+    /**
+     * Render an image-based template: background image + positioned text fields.
+     */
+    private static function render_image_template_page( $pdf, $cert, $settings, $template ) {
+        $pw = $pdf->getPageWidth();
+        $ph = $pdf->getPageHeight();
+
+        // Get image URL and field positions from template options
+        $image_url = get_option( 'sscv_template_image_url_' . $template->id, '' );
+        $positions = json_decode( get_option( 'sscv_template_positions_' . $template->id, '{}' ), true );
+
+        // Draw background image
+        if ( ! empty( $image_url ) ) {
+            $pdf->imageFromUrl( $image_url, 0, 0, $pw, $ph );
+        } else {
+            $pdf->filledRect( 0, 0, $pw, $ph, 255, 255, 255 );
+        }
+
+        // Build field values
+        $dateCompleted = ! empty( $cert->date_completed ) ? SSCV_Helpers::format_date( $cert->date_completed ) : '';
+        $dateIssued    = ! empty( $cert->date_issued ) ? SSCV_Helpers::format_date( $cert->date_issued ) : SSCV_Helpers::format_date( current_time( 'mysql' ) );
+
+        global $wpdb;
+        $studentIdNum = $wpdb->get_var( $wpdb->prepare(
+            "SELECT student_id FROM {$wpdb->prefix}sscv_students WHERE id = %d",
+            $cert->student_id
+        ) );
+
+        $field_values = array(
+            'student_name'     => $cert->full_name,
+            'course_title'     => $cert->course_title ?? '',
+            'completion_date'  => $dateCompleted,
+            'student_id'       => $studentIdNum ?: '',
+            'grade'            => $cert->grade,
+            'certificate_id'   => $cert->certificate_id,
+            'institution_name' => $settings['institution_name'],
+            'date_issued'      => $dateIssued,
+        );
+
+        // Render each positioned field
+        if ( ! empty( $positions ) ) {
+            foreach ( $positions as $fieldName => $pos ) {
+                if ( ! isset( $field_values[ $fieldName ] ) || $field_values[ $fieldName ] === '' ) {
+                    continue;
+                }
+
+                $x = ( floatval( $pos['x'] ) / 100 ) * $pw;
+                $y = ( floatval( $pos['y'] ) / 100 ) * $ph;
+                $fontSize = isset( $pos['fontSize'] ) ? intval( $pos['fontSize'] ) : 16;
+                $color = isset( $pos['color'] ) ? $pos['color'] : '#000000';
+
+                $rgb = self::hexToRgb( $color );
+                $pdf->setFont( 'Helvetica', ( $fieldName === 'student_name' ? 'B' : '' ), $fontSize );
+                $pdf->setTextColor( $rgb[0], $rgb[1], $rgb[2] );
+                $pdf->text( $x, $y, $field_values[ $fieldName ] );
+            }
+        }
+
+        // Add QR code in bottom-right if available
+        if ( ! empty( $cert->qr_code_url ) ) {
+            $pdf->imageFromUrl( $cert->qr_code_url, $pw - 90, $ph - 90, 60, 60 );
+        }
+    }
+
+    /**
+     * Render HTML template as an image embedded in the PDF page.
+     * Uses GD to create an image from the rendered certificate HTML.
+     */
+    private static function render_html_as_image_page( $pdf, $rendered ) {
+        $pw = $pdf->getPageWidth();
+        $ph = $pdf->getPageHeight();
+
+        // Generate the full HTML with inline styles
+        $fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
+            . '* { margin:0; padding:0; box-sizing:border-box; }'
+            . 'body { width:1120px; height:790px; overflow:hidden; }'
+            . $rendered['css']
+            . '</style></head><body>'
+            . $rendered['html']
+            . '</body></html>';
+
+        // Save to a temp HTML file
+        $upload_dir = wp_upload_dir();
+        $tmp_dir = $upload_dir['basedir'] . '/sscv-certificates/tmp/';
+        if ( ! file_exists( $tmp_dir ) ) {
+            wp_mkdir_p( $tmp_dir );
+        }
+
+        $tmpHtml = $tmp_dir . 'cert-render-' . wp_generate_password( 8, false ) . '.html';
+        file_put_contents( $tmpHtml, $fullHtml );
+
+        // Try wkhtmltoimage first (best quality)
+        $tmpImg = $tmp_dir . 'cert-render-' . wp_generate_password( 8, false ) . '.jpg';
+        $wkPath = self::find_wkhtmltoimage();
+
+        if ( $wkPath ) {
+            $cmd = escapeshellcmd( $wkPath )
+                . ' --width 1120 --height 790 --quality 95 --format jpg '
+                . escapeshellarg( $tmpHtml ) . ' '
+                . escapeshellarg( $tmpImg );
+            @exec( $cmd . ' 2>/dev/null', $output, $retVal );
+
+            if ( $retVal === 0 && file_exists( $tmpImg ) ) {
+                $pdf->image( $tmpImg, 0, 0, $pw, $ph );
+                @unlink( $tmpHtml );
+                @unlink( $tmpImg );
+                return true;
+            }
+        }
+
+        // Cleanup temp files
+        @unlink( $tmpHtml );
+        @unlink( $tmpImg );
+
+        return false;
+    }
+
+    /**
+     * Find wkhtmltoimage binary path.
+     */
+    private static function find_wkhtmltoimage() {
+        $paths = array(
+            '/usr/bin/wkhtmltoimage',
+            '/usr/local/bin/wkhtmltoimage',
+            '/opt/bin/wkhtmltoimage',
+        );
+
+        foreach ( $paths as $path ) {
+            if ( file_exists( $path ) && is_executable( $path ) ) {
+                return $path;
+            }
+        }
+
+        // Try which command
+        $which = @exec( 'which wkhtmltoimage 2>/dev/null' );
+        if ( $which && file_exists( trim( $which ) ) ) {
+            return trim( $which );
+        }
+
+        return false;
+    }
+
+    /**
+     * Render the default hardcoded certificate layout (fallback).
+     */
+    private static function render_default_certificate_page( $pdf, $cert, $settings ) {
         $pw = $pdf->getPageWidth();
         $ph = $pdf->getPageHeight();
 

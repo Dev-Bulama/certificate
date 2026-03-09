@@ -32,33 +32,39 @@
         });
 
         // ========================
-        // Certificate Approval
+        // Certificate Approval (with email opt-in popup)
         // ========================
         $(document).on('click', '.sscv-approve-cert', function() {
             var btn = $(this);
             var certId = btn.data('id');
+            $('#sscv-approve-cert-id').val(certId);
+            $('#sscv-approve-send-email').prop('checked', true);
+            $('#sscv-approve-modal').show();
+        });
 
-            if (!confirm('Are you sure you want to approve this certificate? This will generate the certificate and send it to the student.')) {
-                return;
-            }
+        $('#sscv-confirm-approve').on('click', function() {
+            var btn = $(this);
+            var certId = $('#sscv-approve-cert-id').val();
+            var sendEmail = $('#sscv-approve-send-email').is(':checked') ? 1 : 0;
 
             btn.prop('disabled', true).text('Processing...');
 
             $.post(sscv_admin.ajax_url, {
                 action: 'sscv_approve_certificate',
                 nonce: sscv_admin.nonce,
-                cert_id: certId
+                cert_id: certId,
+                send_email: sendEmail
             }, function(response) {
                 if (response.success) {
                     alert(response.data.message);
                     location.reload();
                 } else {
                     alert(response.data.message || 'Error occurred.');
-                    btn.prop('disabled', false).text('Approve');
+                    btn.prop('disabled', false).text('Confirm Approval');
                 }
             }).fail(function() {
                 alert('Request failed. Please try again.');
-                btn.prop('disabled', false).text('Approve');
+                btn.prop('disabled', false).text('Confirm Approval');
             });
         });
 
@@ -130,34 +136,14 @@
             });
         });
 
-        // Approve from preview modal
+        // Approve from preview modal - open approve modal
         $('#sscv-preview-approve').on('click', function() {
             var certId = $('#sscv-preview-cert-id').val();
             if (!certId) return;
-
-            if (!confirm('Are you sure you want to approve this certificate? This will generate the certificate and send it to the student.')) {
-                return;
-            }
-
-            var btn = $(this);
-            btn.prop('disabled', true).text('Processing...');
-
-            $.post(sscv_admin.ajax_url, {
-                action: 'sscv_approve_certificate',
-                nonce: sscv_admin.nonce,
-                cert_id: certId
-            }, function(response) {
-                if (response.success) {
-                    alert(response.data.message);
-                    location.reload();
-                } else {
-                    alert(response.data.message || 'Error occurred.');
-                    btn.prop('disabled', false).text('Approve Certificate');
-                }
-            }).fail(function() {
-                alert('Request failed. Please try again.');
-                btn.prop('disabled', false).text('Approve Certificate');
-            });
+            $('#sscv-approve-cert-id').val(certId);
+            $('#sscv-approve-send-email').prop('checked', true);
+            $('#sscv-preview-modal').hide();
+            $('#sscv-approve-modal').show();
         });
 
         // Open edit name from preview modal

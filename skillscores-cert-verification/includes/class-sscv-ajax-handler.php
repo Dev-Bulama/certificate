@@ -626,10 +626,15 @@ class SSCV_Ajax_Handler {
             array( '%d' )
         );
 
-        // Send email to student
-        SSCV_Email::send_certificate( $cert->certificate_id );
+        // Send email to student only if admin opted in
+        $send_email = isset( $_POST['send_email'] ) ? intval( $_POST['send_email'] ) : 1;
+        $email_msg = '';
+        if ( $send_email ) {
+            SSCV_Email::send_certificate( $cert->certificate_id );
+            $email_msg = ' ' . __( 'Email sent to student.', 'skillscores-cert' );
+        }
 
-        wp_send_json_success( array( 'message' => __( 'Certificate approved and sent to student!', 'skillscores-cert' ) ) );
+        wp_send_json_success( array( 'message' => __( 'Certificate approved!', 'skillscores-cert' ) . $email_msg ) );
     }
 
     /**
@@ -1080,23 +1085,29 @@ class SSCV_Ajax_Handler {
         $date_from = sanitize_text_field( $_POST['date_from'] ?? '' );
         $date_to   = sanitize_text_field( $_POST['date_to'] ?? '' );
         $course_id = intval( $_POST['course_id'] ?? 0 );
-        $status    = sanitize_text_field( $_POST['export_status'] ?? 'approved' );
+        $status    = sanitize_text_field( $_POST['export_status'] ?? '' );
+
+        // Default to approved if no status specified
+        if ( $status === '' ) {
+            $status = 'approved';
+        }
 
         $where  = '1=1';
         $params = array();
 
-        if ( ! empty( $status ) ) {
+        if ( $status !== 'all' ) {
             $where .= " AND status = %s";
             $params[] = $status;
         }
 
+        // Use date_issued for approved certs, created_at as fallback
         if ( ! empty( $date_from ) ) {
-            $where .= " AND DATE(created_at) >= %s";
+            $where .= " AND DATE(COALESCE(date_issued, created_at)) >= %s";
             $params[] = $date_from;
         }
 
         if ( ! empty( $date_to ) ) {
-            $where .= " AND DATE(created_at) <= %s";
+            $where .= " AND DATE(COALESCE(date_issued, created_at)) <= %s";
             $params[] = $date_to;
         }
 
@@ -1105,7 +1116,7 @@ class SSCV_Ajax_Handler {
             $params[] = $course_id;
         }
 
-        $sql = "SELECT certificate_id FROM {$wpdb->prefix}sscv_certificates WHERE {$where} ORDER BY created_at DESC";
+        $sql = "SELECT certificate_id FROM {$wpdb->prefix}sscv_certificates WHERE {$where} ORDER BY COALESCE(date_issued, created_at) DESC";
         $certificates = $wpdb->get_results( empty( $params ) ? $sql : $wpdb->prepare( $sql, $params ) );
 
         if ( empty( $certificates ) ) {

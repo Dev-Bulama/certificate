@@ -53,7 +53,9 @@
                 <label for="sscv-export-status" style="font-size:12px;"><?php esc_html_e( 'Status', 'skillscores-cert' ); ?></label>
                 <select id="sscv-export-status">
                     <option value="approved"><?php esc_html_e( 'Approved', 'skillscores-cert' ); ?></option>
-                    <option value=""><?php esc_html_e( 'All Statuses', 'skillscores-cert' ); ?></option>
+                    <option value="all"><?php esc_html_e( 'All Statuses', 'skillscores-cert' ); ?></option>
+                    <option value="pending"><?php esc_html_e( 'Pending', 'skillscores-cert' ); ?></option>
+                    <option value="rejected"><?php esc_html_e( 'Rejected', 'skillscores-cert' ); ?></option>
                 </select>
             </div>
             <button type="button" class="button button-primary" id="sscv-bulk-export-pdf">
@@ -144,6 +146,25 @@
             </div>
         </div>
     <?php endif; ?>
+
+    <!-- Approve Modal -->
+    <div id="sscv-approve-modal" class="sscv-modal" style="display:none;">
+        <div class="sscv-modal-content">
+            <h3><?php esc_html_e( 'Approve Certificate', 'skillscores-cert' ); ?></h3>
+            <p><?php esc_html_e( 'This will generate the certificate PDF and mark it as approved.', 'skillscores-cert' ); ?></p>
+            <div style="margin:15px 0;padding:12px;background:#f0f6ff;border-radius:6px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="sscv-approve-send-email" value="1" checked />
+                    <span><?php esc_html_e( 'Send certificate email with PDF attachment to the student', 'skillscores-cert' ); ?></span>
+                </label>
+            </div>
+            <div class="sscv-modal-actions">
+                <button class="button button-primary" id="sscv-confirm-approve"><?php esc_html_e( 'Confirm Approval', 'skillscores-cert' ); ?></button>
+                <button class="button sscv-modal-close"><?php esc_html_e( 'Cancel', 'skillscores-cert' ); ?></button>
+            </div>
+            <input type="hidden" id="sscv-approve-cert-id" value="" />
+        </div>
+    </div>
 
     <!-- Reject Modal -->
     <div id="sscv-reject-modal" class="sscv-modal" style="display:none;">
