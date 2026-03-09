@@ -233,16 +233,19 @@ class SSCV_PDF_Generator {
         $pdf->centeredText( $yPos, 'Certificate ID: ' . $cert->certificate_id );
         $yPos += 14;
 
-        // ---- Student ID ----
-        global $wpdb;
-        $studentIdNum = $wpdb->get_var( $wpdb->prepare(
-            "SELECT student_id FROM {$wpdb->prefix}sscv_students WHERE id = %d",
-            $cert->student_id
-        ) );
-        if ( $studentIdNum ) {
-            $pdf->setFont( 'Helvetica', '', 9 );
-            $pdf->centeredText( $yPos, 'Student ID: ' . $studentIdNum );
-            $yPos += 14;
+        // ---- Student ID (if enabled) ----
+        $studentIdEnabled = get_option( 'sscv_student_id_field_enabled', '1' );
+        if ( $studentIdEnabled === '1' ) {
+            global $wpdb;
+            $studentIdNum = $wpdb->get_var( $wpdb->prepare(
+                "SELECT student_id FROM {$wpdb->prefix}sscv_students WHERE id = %d",
+                $cert->student_id
+            ) );
+            if ( $studentIdNum ) {
+                $pdf->setFont( 'Helvetica', '', 9 );
+                $pdf->centeredText( $yPos, 'Student ID: ' . $studentIdNum );
+                $yPos += 14;
+            }
         }
 
         // ---- Bottom section: Signature, Stamp, QR Code ----
@@ -270,8 +273,9 @@ class SSCV_PDF_Generator {
             $pdf->text( $pw - 190, $bottomY + 60, 'Scan to verify' );
         }
 
-        // Passport photo (far right)
-        if ( ! empty( $cert->passport_url ) ) {
+        // Passport photo (far right, if enabled)
+        $passportEnabled = get_option( 'sscv_passport_field_enabled', '1' );
+        if ( $passportEnabled === '1' && ! empty( $cert->passport_url ) ) {
             $pdf->imageFromUrl( $cert->passport_url, $pw - 105, $bottomY - 5, 50, 60 );
         }
 

@@ -52,6 +52,9 @@ class SSCV_Ajax_Handler {
             'sscv_bulk_export_pdf',
             'sscv_preview_certificate',
             'sscv_update_certificate_name',
+            'sscv_export_students',
+            'sscv_import_students',
+            'sscv_save_image_template',
         );
 
         foreach ( $admin_actions as $action ) {
@@ -267,6 +270,18 @@ class SSCV_Ajax_Handler {
         $settings = SSCV_Helpers::get_settings();
 
         foreach ( $results as $cert ) {
+            // Check certificate expiry
+            $expiry_status = 'valid';
+            $expiry_date = '';
+            if ( $settings['certificate_expiry_enabled'] === '1' && ! empty( $cert->date_issued ) ) {
+                $months = intval( $settings['certificate_expiry_months'] );
+                $expiry_timestamp = strtotime( $cert->date_issued . ' + ' . $months . ' months' );
+                $expiry_date = SSCV_Helpers::format_date( date( 'Y-m-d', $expiry_timestamp ) );
+                if ( time() > $expiry_timestamp ) {
+                    $expiry_status = 'expired';
+                }
+            }
+
             $certificates[] = array(
                 'certificate_id'   => $cert->certificate_id,
                 'student_name'     => $cert->full_name,
@@ -276,11 +291,13 @@ class SSCV_Ajax_Handler {
                 'grade'            => $cert->grade,
                 'date_completed'   => $cert->date_completed ? SSCV_Helpers::format_date( $cert->date_completed ) : '',
                 'date_issued'      => $cert->date_issued ? SSCV_Helpers::format_date( $cert->date_issued ) : '',
+                'expiry_date'      => $expiry_date,
+                'expiry_status'    => $expiry_status,
                 'passport_url'     => $cert->passport_url,
                 'certificate_url'  => $cert->certificate_url,
                 'pdf_url'          => $cert->pdf_url,
                 'qr_code_url'      => $cert->qr_code_url,
-                'status'           => 'verified',
+                'status'           => $expiry_status === 'expired' ? 'expired' : 'verified',
                 'institution_name' => $settings['institution_name'],
                 'stamp_url'        => $settings['stamp_url'],
             );
@@ -859,9 +876,11 @@ class SSCV_Ajax_Handler {
             'qr_size'              => 'sscv_qr_size',
             'email_subject'        => 'sscv_email_subject',
             'email_body'           => 'sscv_email_body',
-            'recaptcha_site_key'   => 'sscv_recaptcha_site_key',
-            'recaptcha_secret_key' => 'sscv_recaptcha_secret_key',
-            'project_categories'   => 'sscv_project_categories',
+            'recaptcha_site_key'        => 'sscv_recaptcha_site_key',
+            'recaptcha_secret_key'      => 'sscv_recaptcha_secret_key',
+            'project_categories'        => 'sscv_project_categories',
+            'certificate_template_mode' => 'sscv_certificate_template_mode',
+            'certificate_expiry_months' => 'sscv_certificate_expiry_months',
         );
 
         foreach ( $settings_map as $field => $option ) {
@@ -877,6 +896,7 @@ class SSCV_Ajax_Handler {
         update_option( 'sscv_student_id_field_enabled', isset( $_POST['enable_student_id_field'] ) ? '1' : '0' );
         update_option( 'sscv_grade_field_enabled', isset( $_POST['enable_grade_field'] ) ? '1' : '0' );
         update_option( 'sscv_passport_field_enabled', isset( $_POST['enable_passport_field'] ) ? '1' : '0' );
+        update_option( 'sscv_certificate_expiry_enabled', isset( $_POST['enable_certificate_expiry'] ) ? '1' : '0' );
 
         // Flush rewrite rules in case verification page settings changed
         flush_rewrite_rules();
@@ -1048,7 +1068,7 @@ class SSCV_Ajax_Handler {
     }
 
     /**
-     * Bulk export all approved certificates as one PDF.
+     * Bulk export certificates as PDF with filters.
      */
     public function sscv_bulk_export_pdf() {
         if ( ! SSCV_Security::verify_nonce( 'nonce', 'sscv_admin_nonce' ) || ! SSCV_Security::is_admin() ) {
@@ -1057,12 +1077,39 @@ class SSCV_Ajax_Handler {
 
         global $wpdb;
 
-        $certificates = $wpdb->get_results(
-            "SELECT certificate_id FROM {$wpdb->prefix}sscv_certificates WHERE status = 'approved' ORDER BY created_at DESC"
-        );
+        $date_from = sanitize_text_field( $_POST['date_from'] ?? '' );
+        $date_to   = sanitize_text_field( $_POST['date_to'] ?? '' );
+        $course_id = intval( $_POST['course_id'] ?? 0 );
+        $status    = sanitize_text_field( $_POST['export_status'] ?? 'approved' );
+
+        $where  = '1=1';
+        $params = array();
+
+        if ( ! empty( $status ) ) {
+            $where .= " AND status = %s";
+            $params[] = $status;
+        }
+
+        if ( ! empty( $date_from ) ) {
+            $where .= " AND DATE(created_at) >= %s";
+            $params[] = $date_from;
+        }
+
+        if ( ! empty( $date_to ) ) {
+            $where .= " AND DATE(created_at) <= %s";
+            $params[] = $date_to;
+        }
+
+        if ( ! empty( $course_id ) ) {
+            $where .= " AND course_id = %d";
+            $params[] = $course_id;
+        }
+
+        $sql = "SELECT certificate_id FROM {$wpdb->prefix}sscv_certificates WHERE {$where} ORDER BY created_at DESC";
+        $certificates = $wpdb->get_results( empty( $params ) ? $sql : $wpdb->prepare( $sql, $params ) );
 
         if ( empty( $certificates ) ) {
-            wp_send_json_error( array( 'message' => __( 'No approved certificates to export.', 'skillscores-cert' ) ) );
+            wp_send_json_error( array( 'message' => __( 'No certificates found matching the selected filters.', 'skillscores-cert' ) ) );
         }
 
         $result = SSCV_PDF_Generator::generate_bulk( $certificates );
@@ -1076,5 +1123,218 @@ class SSCV_Ajax_Handler {
             'pdf_url'  => $result['url'],
             'count'    => count( $certificates ),
         ) );
+    }
+
+    /**
+     * Export students as CSV.
+     */
+    public function sscv_export_students() {
+        if ( ! SSCV_Security::verify_nonce( 'nonce', 'sscv_admin_nonce' ) || ! SSCV_Security::is_admin() ) {
+            wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'skillscores-cert' ) ) );
+        }
+
+        global $wpdb;
+
+        $students = $wpdb->get_results(
+            "SELECT student_id, full_name, email, phone, passport_url, created_at FROM {$wpdb->prefix}sscv_students ORDER BY created_at DESC"
+        );
+
+        if ( empty( $students ) ) {
+            wp_send_json_error( array( 'message' => __( 'No students to export.', 'skillscores-cert' ) ) );
+        }
+
+        $upload_dir = wp_upload_dir();
+        $csv_dir    = $upload_dir['basedir'] . '/sscv-certificates/';
+
+        if ( ! file_exists( $csv_dir ) ) {
+            wp_mkdir_p( $csv_dir );
+        }
+
+        $filename = 'students-export-' . date( 'Y-m-d-His' ) . '.csv';
+        $filepath = $csv_dir . $filename;
+        $fileurl  = $upload_dir['baseurl'] . '/sscv-certificates/' . $filename;
+
+        $fp = fopen( $filepath, 'w' );
+        fputcsv( $fp, array( 'Student ID', 'Full Name', 'Email', 'Phone', 'Passport URL', 'Registered Date' ) );
+
+        foreach ( $students as $stu ) {
+            fputcsv( $fp, array(
+                $stu->student_id,
+                $stu->full_name,
+                $stu->email,
+                $stu->phone,
+                $stu->passport_url,
+                $stu->created_at,
+            ) );
+        }
+
+        fclose( $fp );
+
+        wp_send_json_success( array(
+            'message'  => sprintf( __( 'Exported %d students.', 'skillscores-cert' ), count( $students ) ),
+            'csv_url'  => $fileurl,
+            'count'    => count( $students ),
+        ) );
+    }
+
+    /**
+     * Import students from CSV.
+     */
+    public function sscv_import_students() {
+        if ( ! SSCV_Security::verify_nonce( 'nonce', 'sscv_admin_nonce' ) || ! SSCV_Security::is_admin() ) {
+            wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'skillscores-cert' ) ) );
+        }
+
+        if ( empty( $_FILES['csv_file'] ) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK ) {
+            wp_send_json_error( array( 'message' => __( 'Please upload a valid CSV file.', 'skillscores-cert' ) ) );
+        }
+
+        $file = $_FILES['csv_file'];
+        $ext  = strtolower( pathinfo( $file['name'], PATHINFO_EXTENSION ) );
+
+        if ( $ext !== 'csv' ) {
+            wp_send_json_error( array( 'message' => __( 'Only CSV files are allowed.', 'skillscores-cert' ) ) );
+        }
+
+        global $wpdb;
+
+        $fp = fopen( $file['tmp_name'], 'r' );
+        $header = fgetcsv( $fp );
+
+        if ( ! $header ) {
+            fclose( $fp );
+            wp_send_json_error( array( 'message' => __( 'Empty or invalid CSV file.', 'skillscores-cert' ) ) );
+        }
+
+        // Normalize header names
+        $header = array_map( function( $h ) {
+            return strtolower( trim( str_replace( array( ' ', '-' ), '_', $h ) ) );
+        }, $header );
+
+        $name_col  = array_search( 'full_name', $header );
+        $email_col = array_search( 'email', $header );
+        $id_col    = array_search( 'student_id', $header );
+        $phone_col = array_search( 'phone', $header );
+
+        if ( $name_col === false || $email_col === false ) {
+            fclose( $fp );
+            wp_send_json_error( array( 'message' => __( 'CSV must have at least "Full Name" and "Email" columns.', 'skillscores-cert' ) ) );
+        }
+
+        $imported = 0;
+        $skipped  = 0;
+
+        while ( ( $row = fgetcsv( $fp ) ) !== false ) {
+            $full_name = sanitize_text_field( $row[ $name_col ] ?? '' );
+            $email     = sanitize_email( $row[ $email_col ] ?? '' );
+
+            if ( empty( $full_name ) || empty( $email ) ) {
+                $skipped++;
+                continue;
+            }
+
+            // Use provided student ID or auto-generate
+            $student_id = '';
+            if ( $id_col !== false && ! empty( $row[ $id_col ] ) ) {
+                $student_id = sanitize_text_field( $row[ $id_col ] );
+            }
+
+            if ( empty( $student_id ) ) {
+                $student_id = SSCV_Helpers::generate_student_id();
+            }
+
+            // Check if student already exists
+            $exists = $wpdb->get_var( $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}sscv_students WHERE student_id = %s OR email = %s",
+                $student_id,
+                $email
+            ) );
+
+            if ( $exists ) {
+                $skipped++;
+                continue;
+            }
+
+            $phone = ( $phone_col !== false && isset( $row[ $phone_col ] ) ) ? sanitize_text_field( $row[ $phone_col ] ) : '';
+
+            $wpdb->insert(
+                $wpdb->prefix . 'sscv_students',
+                array(
+                    'student_id' => $student_id,
+                    'full_name'  => $full_name,
+                    'email'      => $email,
+                    'phone'      => $phone,
+                ),
+                array( '%s', '%s', '%s', '%s' )
+            );
+
+            $imported++;
+        }
+
+        fclose( $fp );
+
+        wp_send_json_success( array(
+            'message' => sprintf(
+                __( 'Import complete. %d students imported, %d skipped (duplicates or invalid).', 'skillscores-cert' ),
+                $imported,
+                $skipped
+            ),
+            'imported' => $imported,
+            'skipped'  => $skipped,
+        ) );
+    }
+
+    /**
+     * Save image-based certificate template.
+     */
+    public function sscv_save_image_template() {
+        if ( ! SSCV_Security::verify_nonce( 'nonce', 'sscv_admin_nonce' ) || ! SSCV_Security::is_admin() ) {
+            wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'skillscores-cert' ) ) );
+        }
+
+        $template_id    = intval( $_POST['template_id'] ?? 0 );
+        $template_name  = sanitize_text_field( $_POST['template_name'] ?? '' );
+        $image_url      = esc_url_raw( $_POST['image_url'] ?? '' );
+        $field_positions = wp_unslash( $_POST['field_positions'] ?? '{}' );
+        $is_default     = intval( $_POST['is_default'] ?? 0 );
+
+        if ( empty( $template_name ) || empty( $image_url ) ) {
+            wp_send_json_error( array( 'message' => __( 'Template name and image are required.', 'skillscores-cert' ) ) );
+        }
+
+        // Validate JSON
+        $positions = json_decode( $field_positions, true );
+        if ( json_last_error() !== JSON_ERROR_NONE ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid field positions data.', 'skillscores-cert' ) ) );
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'sscv_certificate_templates';
+
+        if ( $is_default ) {
+            $wpdb->update( $table, array( 'is_default' => 0 ), array( 'is_default' => 1 ) );
+        }
+
+        // Store image template: image_url in html_content, positions JSON in css_content, template_type marker
+        $save_data = array(
+            'template_name' => $template_name,
+            'html_content'  => $image_url,
+            'css_content'   => wp_json_encode( $positions ),
+            'is_default'    => $is_default,
+        );
+
+        if ( $template_id ) {
+            $wpdb->update( $table, $save_data, array( 'id' => $template_id ) );
+            $message = __( 'Image template updated.', 'skillscores-cert' );
+        } else {
+            $wpdb->insert( $table, $save_data );
+            $template_id = $wpdb->insert_id;
+            $message = __( 'Image template created.', 'skillscores-cert' );
+        }
+
+        // Mark this template as image type
+        update_option( 'sscv_template_type_' . $template_id, 'image' );
+
+        wp_send_json_success( array( 'message' => $message, 'template_id' => $template_id ) );
     }
 }

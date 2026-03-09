@@ -14,13 +14,52 @@
                     <option value="rejected" <?php selected( $status_filter, 'rejected' ); ?>><?php esc_html_e( 'Rejected', 'skillscores-cert' ); ?></option>
                     <option value="revoked" <?php selected( $status_filter, 'revoked' ); ?>><?php esc_html_e( 'Revoked', 'skillscores-cert' ); ?></option>
                 </select>
+                <select name="course_id">
+                    <option value=""><?php esc_html_e( 'All Courses', 'skillscores-cert' ); ?></option>
+                    <?php foreach ( $courses_list as $course ) : ?>
+                        <option value="<?php echo esc_attr( $course->id ); ?>" <?php selected( $course_filter, $course->id ); ?>>
+                            <?php echo esc_html( $course->course_title ); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
                 <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'Search by name, email, or cert ID...', 'skillscores-cert' ); ?>" />
                 <button type="submit" class="button"><?php esc_html_e( 'Filter', 'skillscores-cert' ); ?></button>
-                <button type="button" class="button button-primary" id="sscv-bulk-export-pdf" style="margin-left:10px;">
-                    <?php esc_html_e( 'Export All Approved as PDF', 'skillscores-cert' ); ?>
-                </button>
             </div>
         </form>
+    </div>
+
+    <!-- Bulk Export Panel -->
+    <div class="sscv-card" style="margin-bottom:20px;">
+        <h2><?php esc_html_e( 'Bulk Export Certificates (PDF)', 'skillscores-cert' ); ?></h2>
+        <div class="sscv-filter-row" style="gap:10px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="sscv-field" style="margin:0;">
+                <label for="sscv-export-date-from" style="font-size:12px;"><?php esc_html_e( 'Date From', 'skillscores-cert' ); ?></label>
+                <input type="date" id="sscv-export-date-from" />
+            </div>
+            <div class="sscv-field" style="margin:0;">
+                <label for="sscv-export-date-to" style="font-size:12px;"><?php esc_html_e( 'Date To', 'skillscores-cert' ); ?></label>
+                <input type="date" id="sscv-export-date-to" />
+            </div>
+            <div class="sscv-field" style="margin:0;">
+                <label for="sscv-export-course" style="font-size:12px;"><?php esc_html_e( 'Course', 'skillscores-cert' ); ?></label>
+                <select id="sscv-export-course">
+                    <option value=""><?php esc_html_e( 'All Courses', 'skillscores-cert' ); ?></option>
+                    <?php foreach ( $courses_list as $course ) : ?>
+                        <option value="<?php echo esc_attr( $course->id ); ?>"><?php echo esc_html( $course->course_title ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="sscv-field" style="margin:0;">
+                <label for="sscv-export-status" style="font-size:12px;"><?php esc_html_e( 'Status', 'skillscores-cert' ); ?></label>
+                <select id="sscv-export-status">
+                    <option value="approved"><?php esc_html_e( 'Approved', 'skillscores-cert' ); ?></option>
+                    <option value=""><?php esc_html_e( 'All Statuses', 'skillscores-cert' ); ?></option>
+                </select>
+            </div>
+            <button type="button" class="button button-primary" id="sscv-bulk-export-pdf">
+                <?php esc_html_e( 'Export as PDF', 'skillscores-cert' ); ?>
+            </button>
+        </div>
     </div>
 
     <table class="wp-list-table widefat fixed striped sscv-table">

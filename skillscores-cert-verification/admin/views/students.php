@@ -8,6 +8,21 @@
             <div class="sscv-filter-row">
                 <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'Search by name, student ID, or email...', 'skillscores-cert' ); ?>" />
                 <button type="submit" class="button"><?php esc_html_e( 'Search', 'skillscores-cert' ); ?></button>
+                <button type="button" class="button" id="sscv-export-students" style="margin-left:10px;">
+                    <?php esc_html_e( 'Export Students (CSV)', 'skillscores-cert' ); ?>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Import Students -->
+    <div class="sscv-card" style="margin-bottom:20px;">
+        <h2><?php esc_html_e( 'Import Students from CSV', 'skillscores-cert' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'CSV must have columns: Full Name, Email. Optional columns: Student ID, Phone. Students without a Student ID will be auto-assigned one.', 'skillscores-cert' ); ?></p>
+        <form id="sscv-import-students-form" enctype="multipart/form-data" style="margin-top:12px;">
+            <div class="sscv-filter-row">
+                <input type="file" id="sscv-import-csv" accept=".csv" />
+                <button type="submit" class="button button-primary"><?php esc_html_e( 'Import', 'skillscores-cert' ); ?></button>
             </div>
         </form>
     </div>

@@ -85,6 +85,41 @@
             </div>
         </div>
 
+        <!-- Certificate Template Type -->
+        <div class="sscv-card">
+            <h2><?php esc_html_e( 'Certificate Template Mode', 'skillscores-cert' ); ?></h2>
+
+            <div class="sscv-field">
+                <label for="certificate_template_mode"><?php esc_html_e( 'Template Mode', 'skillscores-cert' ); ?></label>
+                <select name="certificate_template_mode" id="certificate_template_mode">
+                    <option value="html" <?php selected( $settings['certificate_template_mode'], 'html' ); ?>><?php esc_html_e( 'HTML-Based Templates', 'skillscores-cert' ); ?></option>
+                    <option value="image" <?php selected( $settings['certificate_template_mode'], 'image' ); ?>><?php esc_html_e( 'Image-Based Templates', 'skillscores-cert' ); ?></option>
+                </select>
+                <p class="description"><?php esc_html_e( 'Choose whether to use HTML/CSS templates or image-based templates with variable positioning for certificate generation.', 'skillscores-cert' ); ?></p>
+            </div>
+        </div>
+
+        <!-- Certificate Expiry -->
+        <div class="sscv-card">
+            <h2><?php esc_html_e( 'Certificate Validity', 'skillscores-cert' ); ?></h2>
+
+            <div class="sscv-field">
+                <label for="enable_certificate_expiry">
+                    <input type="checkbox" name="enable_certificate_expiry" id="enable_certificate_expiry" value="1"
+                           <?php checked( $settings['certificate_expiry_enabled'], '1' ); ?> />
+                    <?php esc_html_e( 'Enable certificate expiry', 'skillscores-cert' ); ?>
+                </label>
+                <p class="description"><?php esc_html_e( 'When enabled, certificates will expire after the specified period.', 'skillscores-cert' ); ?></p>
+            </div>
+
+            <div class="sscv-field">
+                <label for="certificate_expiry_months"><?php esc_html_e( 'Validity Period (months)', 'skillscores-cert' ); ?></label>
+                <input type="number" name="certificate_expiry_months" id="certificate_expiry_months" min="1" max="120"
+                       value="<?php echo esc_attr( $settings['certificate_expiry_months'] ); ?>" />
+                <p class="description"><?php esc_html_e( 'Number of months a certificate remains valid after issue date.', 'skillscores-cert' ); ?></p>
+            </div>
+        </div>
+
         <!-- Appearance Settings -->
         <div class="sscv-card">
             <h2><?php esc_html_e( 'Appearance', 'skillscores-cert' ); ?></h2>

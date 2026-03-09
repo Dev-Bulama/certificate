@@ -154,9 +154,12 @@ class SSCV_Admin {
         global $wpdb;
 
         $status_filter = sanitize_text_field( $_GET['status'] ?? '' );
+        $course_filter = intval( $_GET['course_id'] ?? 0 );
         $search        = sanitize_text_field( $_GET['s'] ?? '' );
         $paged         = max( 1, intval( $_GET['paged'] ?? 1 ) );
         $per_page      = 20;
+
+        $courses_list = SSCV_Helpers::get_courses_dropdown();
 
         $where = '1=1';
         $params = array();
@@ -164,6 +167,11 @@ class SSCV_Admin {
         if ( ! empty( $status_filter ) ) {
             $where .= " AND c.status = %s";
             $params[] = $status_filter;
+        }
+
+        if ( ! empty( $course_filter ) ) {
+            $where .= " AND c.course_id = %d";
+            $params[] = $course_filter;
         }
 
         if ( ! empty( $search ) ) {

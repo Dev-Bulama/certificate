@@ -48,9 +48,12 @@ class SSCV_Helpers {
             'email_body'       => get_option( 'sscv_email_body', '' ),
             'recaptcha_site_key'   => get_option( 'sscv_recaptcha_site_key', '' ),
             'recaptcha_secret_key' => get_option( 'sscv_recaptcha_secret_key', '' ),
-            'grade_field_enabled'      => get_option( 'sscv_grade_field_enabled', '1' ),
-            'student_id_field_enabled' => get_option( 'sscv_student_id_field_enabled', '1' ),
-            'passport_field_enabled'   => get_option( 'sscv_passport_field_enabled', '1' ),
+            'grade_field_enabled'       => get_option( 'sscv_grade_field_enabled', '1' ),
+            'student_id_field_enabled'  => get_option( 'sscv_student_id_field_enabled', '1' ),
+            'passport_field_enabled'    => get_option( 'sscv_passport_field_enabled', '1' ),
+            'certificate_template_mode' => get_option( 'sscv_certificate_template_mode', 'html' ),
+            'certificate_expiry_enabled' => get_option( 'sscv_certificate_expiry_enabled', '0' ),
+            'certificate_expiry_months'  => get_option( 'sscv_certificate_expiry_months', '24' ),
         );
     }
 
@@ -179,6 +182,34 @@ class SSCV_Helpers {
      */
     public static function get_verification_url( $certificate_id ) {
         return add_query_arg( 'cert_id', urlencode( $certificate_id ), home_url( '/verify/' ) );
+    }
+
+    /**
+     * Generate a unique student ID.
+     */
+    public static function generate_student_id() {
+        $prefix = 'STU';
+        $unique = strtoupper( wp_generate_password( 6, false, false ) );
+        $student_id = $prefix . '-' . date( 'Y' ) . '-' . $unique;
+
+        global $wpdb;
+        $exists = $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}sscv_students WHERE student_id = %s",
+            $student_id
+        ) );
+
+        if ( $exists ) {
+            return self::generate_student_id();
+        }
+
+        return $student_id;
+    }
+
+    /**
+     * Check if a template is image-based.
+     */
+    public static function is_image_template( $template_id ) {
+        return get_option( 'sscv_template_type_' . $template_id ) === 'image';
     }
 
     /**

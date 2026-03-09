@@ -421,12 +421,12 @@
         });
 
         // ========================
-        // Bulk Export PDF
+        // Bulk Export PDF with Filters
         // ========================
         $('#sscv-bulk-export-pdf').on('click', function() {
             var btn = $(this);
 
-            if (!confirm('This will generate a single PDF containing all approved certificates. This may take a moment. Continue?')) {
+            if (!confirm('This will generate a PDF with the selected filters. This may take a moment. Continue?')) {
                 return;
             }
 
@@ -434,7 +434,11 @@
 
             $.post(sscv_admin.ajax_url, {
                 action: 'sscv_bulk_export_pdf',
-                nonce: sscv_admin.nonce
+                nonce: sscv_admin.nonce,
+                date_from: $('#sscv-export-date-from').val(),
+                date_to: $('#sscv-export-date-to').val(),
+                course_id: $('#sscv-export-course').val(),
+                export_status: $('#sscv-export-status').val()
             }, function(response) {
                 if (response.success) {
                     alert(response.data.message);
@@ -442,11 +446,208 @@
                 } else {
                     alert(response.data.message || 'Export failed.');
                 }
-                btn.prop('disabled', false).text('Export All Approved as PDF');
+                btn.prop('disabled', false).text('Export as PDF');
             }).fail(function() {
                 alert('Request failed. Please try again.');
-                btn.prop('disabled', false).text('Export All Approved as PDF');
+                btn.prop('disabled', false).text('Export as PDF');
             });
+        });
+
+        // ========================
+        // Student Export CSV
+        // ========================
+        $('#sscv-export-students').on('click', function() {
+            var btn = $(this);
+            btn.prop('disabled', true).text('Exporting...');
+
+            $.post(sscv_admin.ajax_url, {
+                action: 'sscv_export_students',
+                nonce: sscv_admin.nonce
+            }, function(response) {
+                if (response.success) {
+                    alert(response.data.message);
+                    window.open(response.data.csv_url, '_blank');
+                } else {
+                    alert(response.data.message || 'Export failed.');
+                }
+                btn.prop('disabled', false).text('Export Students (CSV)');
+            }).fail(function() {
+                alert('Request failed.');
+                btn.prop('disabled', false).text('Export Students (CSV)');
+            });
+        });
+
+        // ========================
+        // Student Import CSV
+        // ========================
+        $('#sscv-import-students-form').on('submit', function(e) {
+            e.preventDefault();
+            var btn = $(this).find('[type="submit"]');
+            var fileInput = $('#sscv-import-csv')[0];
+
+            if (!fileInput.files.length) {
+                alert('Please select a CSV file to import.');
+                return;
+            }
+
+            btn.prop('disabled', true).text('Importing...');
+
+            var formData = new FormData();
+            formData.append('action', 'sscv_import_students');
+            formData.append('nonce', sscv_admin.nonce);
+            formData.append('csv_file', fileInput.files[0]);
+
+            $.ajax({
+                url: sscv_admin.ajax_url,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert(response.data.message || 'Import failed.');
+                    }
+                    btn.prop('disabled', false).text('Import');
+                },
+                error: function() {
+                    alert('Request failed.');
+                    btn.prop('disabled', false).text('Import');
+                }
+            });
+        });
+
+        // ========================
+        // Image Template Builder
+        // ========================
+
+        // Add field to image template canvas
+        $(document).on('click', '.sscv-img-add-field', function() {
+            var fieldName = $(this).data('field');
+            var canvas = $('#sscv-img-template-canvas');
+            if (!canvas.length) return;
+
+            var fieldId = 'img-field-' + fieldName;
+            if ($('#' + fieldId).length) {
+                alert('This field is already on the canvas.');
+                return;
+            }
+
+            var fieldEl = $('<div class="sscv-img-field-draggable" id="' + fieldId + '" data-field="' + fieldName + '">' +
+                '<span class="sscv-img-field-label">{{' + fieldName + '}}</span>' +
+                '<span class="sscv-img-field-remove">&times;</span>' +
+                '</div>');
+
+            canvas.append(fieldEl);
+            fieldEl.css({ position: 'absolute', top: '50px', left: '50px', cursor: 'move' });
+
+            var isDragging = false, startX, startY, origLeft, origTop;
+
+            fieldEl.on('mousedown', function(e) {
+                if ($(e.target).hasClass('sscv-img-field-remove')) return;
+                isDragging = true;
+                startX = e.pageX;
+                startY = e.pageY;
+                origLeft = parseInt(fieldEl.css('left'));
+                origTop = parseInt(fieldEl.css('top'));
+                e.preventDefault();
+            });
+
+            $(document).on('mousemove.drag' + fieldName, function(e) {
+                if (!isDragging) return;
+                fieldEl.css({
+                    left: origLeft + (e.pageX - startX),
+                    top: origTop + (e.pageY - startY)
+                });
+            });
+
+            $(document).on('mouseup.drag' + fieldName, function() {
+                if (isDragging) {
+                    isDragging = false;
+                    sscvUpdateImgPositions();
+                }
+            });
+
+            sscvUpdateImgPositions();
+        });
+
+        // Remove field from canvas
+        $(document).on('click', '.sscv-img-field-remove', function() {
+            $(this).parent().remove();
+            sscvUpdateImgPositions();
+        });
+
+        function sscvUpdateImgPositions() {
+            var positions = {};
+            var canvas = $('#sscv-img-template-canvas');
+            if (!canvas.length) return;
+
+            var canvasW = canvas.width();
+            var canvasH = canvas.height();
+
+            canvas.find('.sscv-img-field-draggable').each(function() {
+                var el = $(this);
+                var field = el.data('field');
+                positions[field] = {
+                    x: Math.round((parseInt(el.css('left')) / canvasW) * 100 * 100) / 100,
+                    y: Math.round((parseInt(el.css('top')) / canvasH) * 100 * 100) / 100,
+                    fontSize: el.data('fontsize') || '16',
+                    color: el.data('color') || '#000000'
+                };
+            });
+
+            $('#sscv-img-field-positions').val(JSON.stringify(positions));
+        }
+
+        // Save image template
+        $('#sscv-image-template-form').on('submit', function(e) {
+            e.preventDefault();
+            sscvUpdateImgPositions();
+
+            var btn = $(this).find('[type="submit"]');
+            btn.prop('disabled', true).text('Saving...');
+
+            $.post(sscv_admin.ajax_url, {
+                action: 'sscv_save_image_template',
+                nonce: sscv_admin.nonce,
+                template_id: $('#sscv-img-template-id').val(),
+                template_name: $('#sscv-img-template-name').val(),
+                image_url: $('#sscv-img-template-url').val(),
+                field_positions: $('#sscv-img-field-positions').val(),
+                is_default: $('#sscv-img-is-default').is(':checked') ? 1 : 0
+            }, function(response) {
+                if (response.success) {
+                    alert(response.data.message);
+                    location.reload();
+                } else {
+                    alert(response.data.message || 'Error.');
+                }
+                btn.prop('disabled', false).text('Save Image Template');
+            }).fail(function() {
+                alert('Request failed.');
+                btn.prop('disabled', false).text('Save Image Template');
+            });
+        });
+
+        // Upload image for image template
+        $(document).on('click', '#sscv-img-upload-btn', function(e) {
+            e.preventDefault();
+            var frame = wp.media({
+                title: 'Select Certificate Background Image',
+                button: { text: 'Use this image' },
+                multiple: false,
+                library: { type: 'image' }
+            });
+
+            frame.on('select', function() {
+                var attachment = frame.state().get('selection').first().toJSON();
+                $('#sscv-img-template-url').val(attachment.url);
+                $('#sscv-img-template-canvas').css('background-image', 'url(' + attachment.url + ')').show();
+            });
+
+            frame.open();
         });
 
     });

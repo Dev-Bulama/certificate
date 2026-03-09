@@ -43,16 +43,36 @@ class SSCV_Email {
             $settings['email_body'] ?: self::get_default_body()
         );
 
-        // Build HTML email
-        $html_body = self::build_html_email( $body, $cert, $settings );
+        // Build HTML email with the certificate preview embedded
+        $certificate_preview_html = '';
+        $rendered = SSCV_Certificate_Engine::render( $certificate_id );
+        if ( $rendered ) {
+            $certificate_preview_html = '<div style="margin:20px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;max-width:100%;">'
+                . '<style>' . $rendered['css'] . '</style>'
+                . '<div style="transform:scale(0.5);transform-origin:top left;width:200%;overflow:hidden;">' . $rendered['html'] . '</div>'
+                . '</div>';
+        }
 
-        // Attachments
+        $html_body = self::build_html_email( $body, $cert, $settings, $certificate_preview_html );
+
+        // Attachments - use already-generated files from approval process
         $attachments = array();
+        $upload_dir = wp_upload_dir();
 
-        // Generate and attach PDF/printable certificate
-        $pdf_result = SSCV_PDF_Generator::generate( $certificate_id );
-        if ( $pdf_result && ! empty( $pdf_result['file'] ) && file_exists( $pdf_result['file'] ) ) {
-            $attachments[] = $pdf_result['file'];
+        // Attach the PDF that was generated during approval
+        if ( ! empty( $cert->pdf_url ) ) {
+            $pdf_path = str_replace( $upload_dir['baseurl'], $upload_dir['basedir'], $cert->pdf_url );
+            if ( file_exists( $pdf_path ) ) {
+                $attachments[] = $pdf_path;
+            }
+        }
+
+        // Fallback: generate PDF if not already available
+        if ( empty( $attachments ) ) {
+            $pdf_result = SSCV_PDF_Generator::generate( $certificate_id );
+            if ( $pdf_result && ! empty( $pdf_result['file'] ) && file_exists( $pdf_result['file'] ) ) {
+                $attachments[] = $pdf_result['file'];
+            }
         }
 
         // Headers for HTML email
@@ -105,7 +125,7 @@ class SSCV_Email {
     /**
      * Build HTML email template.
      */
-    private static function build_html_email( $body_text, $cert, $settings ) {
+    private static function build_html_email( $body_text, $cert, $settings, $certificate_preview = '' ) {
         $theme_color = $settings['theme_color'];
         $accent_color = $settings['accent_color'];
         $institution = esc_html( $settings['institution_name'] );
@@ -138,6 +158,7 @@ class SSCV_Email {
 <p style="text-align:center;margin:25px 0;">
 <a href="' . esc_url( $verification_url ) . '" style="display:inline-block;padding:12px 30px;background:' . esc_attr( $theme_color ) . ';color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">' . esc_html__( 'Verify Certificate', 'skillscores-cert' ) . '</a>
 </p>
+' . $certificate_preview . '
 </td></tr>
 
 <!-- Footer -->
