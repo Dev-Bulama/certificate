@@ -159,15 +159,8 @@ class SSCV_PDF_Generator {
             return;
         }
 
-        // For HTML templates, try to render the template HTML as an image
-        if ( $template && ! empty( $template->html_content ) ) {
-            $rendered = SSCV_Certificate_Engine::render( $cert->certificate_id );
-            if ( $rendered && self::render_html_as_image_page( $pdf, $rendered ) ) {
-                return;
-            }
-        }
-
-        // Fallback: use the default hardcoded layout
+        // For HTML templates, use the default layout
+        // (the basic PDF builder cannot render arbitrary HTML)
         self::render_default_certificate_page( $pdf, $cert, $settings );
     }
 
@@ -178,9 +171,12 @@ class SSCV_PDF_Generator {
         $pw = $pdf->getPageWidth();
         $ph = $pdf->getPageHeight();
 
-        // Get image URL and field positions from template options
-        $image_url = get_option( 'sscv_template_image_url_' . $template->id, '' );
-        $positions = json_decode( get_option( 'sscv_template_positions_' . $template->id, '{}' ), true );
+        // Image templates store: image URL in html_content, positions JSON in css_content
+        $image_url = $template->html_content;
+        $positions = json_decode( $template->css_content, true );
+        if ( ! is_array( $positions ) ) {
+            $positions = array();
+        }
 
         // Draw background image
         if ( ! empty( $image_url ) ) {
@@ -233,84 +229,6 @@ class SSCV_PDF_Generator {
         if ( ! empty( $cert->qr_code_url ) ) {
             $pdf->imageFromUrl( $cert->qr_code_url, $pw - 90, $ph - 90, 60, 60 );
         }
-    }
-
-    /**
-     * Render HTML template as an image embedded in the PDF page.
-     * Uses GD to create an image from the rendered certificate HTML.
-     */
-    private static function render_html_as_image_page( $pdf, $rendered ) {
-        $pw = $pdf->getPageWidth();
-        $ph = $pdf->getPageHeight();
-
-        // Generate the full HTML with inline styles
-        $fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
-            . '* { margin:0; padding:0; box-sizing:border-box; }'
-            . 'body { width:1120px; height:790px; overflow:hidden; }'
-            . $rendered['css']
-            . '</style></head><body>'
-            . $rendered['html']
-            . '</body></html>';
-
-        // Save to a temp HTML file
-        $upload_dir = wp_upload_dir();
-        $tmp_dir = $upload_dir['basedir'] . '/sscv-certificates/tmp/';
-        if ( ! file_exists( $tmp_dir ) ) {
-            wp_mkdir_p( $tmp_dir );
-        }
-
-        $tmpHtml = $tmp_dir . 'cert-render-' . wp_generate_password( 8, false ) . '.html';
-        file_put_contents( $tmpHtml, $fullHtml );
-
-        // Try wkhtmltoimage first (best quality)
-        $tmpImg = $tmp_dir . 'cert-render-' . wp_generate_password( 8, false ) . '.jpg';
-        $wkPath = self::find_wkhtmltoimage();
-
-        if ( $wkPath ) {
-            $cmd = escapeshellcmd( $wkPath )
-                . ' --width 1120 --height 790 --quality 95 --format jpg '
-                . escapeshellarg( $tmpHtml ) . ' '
-                . escapeshellarg( $tmpImg );
-            @exec( $cmd . ' 2>/dev/null', $output, $retVal );
-
-            if ( $retVal === 0 && file_exists( $tmpImg ) ) {
-                $pdf->image( $tmpImg, 0, 0, $pw, $ph );
-                @unlink( $tmpHtml );
-                @unlink( $tmpImg );
-                return true;
-            }
-        }
-
-        // Cleanup temp files
-        @unlink( $tmpHtml );
-        @unlink( $tmpImg );
-
-        return false;
-    }
-
-    /**
-     * Find wkhtmltoimage binary path.
-     */
-    private static function find_wkhtmltoimage() {
-        $paths = array(
-            '/usr/bin/wkhtmltoimage',
-            '/usr/local/bin/wkhtmltoimage',
-            '/opt/bin/wkhtmltoimage',
-        );
-
-        foreach ( $paths as $path ) {
-            if ( file_exists( $path ) && is_executable( $path ) ) {
-                return $path;
-            }
-        }
-
-        // Try which command
-        $which = @exec( 'which wkhtmltoimage 2>/dev/null' );
-        if ( $which && file_exists( trim( $which ) ) ) {
-            return trim( $which );
-        }
-
-        return false;
     }
 
     /**

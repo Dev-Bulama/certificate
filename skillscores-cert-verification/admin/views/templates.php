@@ -76,7 +76,7 @@
         <h2><?php esc_html_e( 'Image-Based Certificate Template', 'skillscores-cert' ); ?></h2>
         <p class="description"><?php esc_html_e( 'Upload a certificate background image and drag-and-drop variable fields onto it to position them.', 'skillscores-cert' ); ?></p>
 
-        <form id="sscv-image-template-form" style="margin-top:15px;" onsubmit="return false;">
+        <form id="sscv-image-template-form" style="margin-top:15px;" method="post" action="">
             <input type="hidden" id="sscv-img-template-id" value="" />
             <input type="hidden" id="sscv-img-template-url" value="" />
             <input type="hidden" id="sscv-img-field-positions" value="{}" />

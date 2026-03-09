@@ -590,6 +590,19 @@
         // Save image template
         $('#sscv-image-template-form').on('submit', function(e) {
             e.preventDefault();
+
+            // Sync visible URL input to hidden field before saving
+            var imgUrl = $('#sscv-img-template-url-input').val() || $('#sscv-img-template-url').val();
+            imgUrl = (imgUrl || '').trim();
+            $('#sscv-img-template-url').val(imgUrl);
+
+            var templateName = $('#sscv-img-template-name').val();
+
+            if (!templateName || !imgUrl) {
+                alert('Please enter a template name and provide a background image URL.');
+                return;
+            }
+
             sscvUpdateImgPositions();
 
             var btn = $(this).find('[type="submit"]');
@@ -599,8 +612,8 @@
                 action: 'sscv_save_image_template',
                 nonce: sscv_admin.nonce,
                 template_id: $('#sscv-img-template-id').val(),
-                template_name: $('#sscv-img-template-name').val(),
-                image_url: $('#sscv-img-template-url').val(),
+                template_name: templateName,
+                image_url: imgUrl,
                 field_positions: $('#sscv-img-field-positions').val(),
                 is_default: $('#sscv-img-is-default').is(':checked') ? 1 : 0
             }, function(response) {
@@ -608,11 +621,11 @@
                     alert(response.data.message);
                     location.reload();
                 } else {
-                    alert(response.data.message || 'Error.');
+                    alert(response.data.message || 'Error saving template.');
                 }
                 btn.prop('disabled', false).text('Save Image Template');
-            }).fail(function() {
-                alert('Request failed.');
+            }).fail(function(xhr) {
+                alert('Request failed. Server returned: ' + xhr.status);
                 btn.prop('disabled', false).text('Save Image Template');
             });
         });

@@ -591,25 +591,45 @@ class SSCV_Ajax_Handler {
             wp_send_json_error( array( 'message' => __( 'Certificate not found.', 'skillscores-cert' ) ) );
         }
 
+        // Wrap all generation steps in error handling to prevent 500 errors
+        $qr_url = '';
+        $cert_url = '';
+        $pdf_url = '';
+        $warnings = array();
+
         // Generate QR Code
-        $qr_url = SSCV_QR_Generator::generate( $cert->certificate_id );
+        try {
+            $qr_url = SSCV_QR_Generator::generate( $cert->certificate_id );
+        } catch ( \Throwable $e ) {
+            $warnings[] = 'QR generation failed';
+        }
 
         // Update QR code URL in certificate
-        $wpdb->update(
-            $wpdb->prefix . 'sscv_certificates',
-            array( 'qr_code_url' => $qr_url ),
-            array( 'id' => $cert_db_id ),
-            array( '%s' ),
-            array( '%d' )
-        );
+        if ( $qr_url ) {
+            $wpdb->update(
+                $wpdb->prefix . 'sscv_certificates',
+                array( 'qr_code_url' => $qr_url ),
+                array( 'id' => $cert_db_id ),
+                array( '%s' ),
+                array( '%d' )
+            );
+        }
 
         // Save certificate HTML file
-        $cert_file = SSCV_Certificate_Engine::save_certificate_file( $cert->certificate_id );
-        $cert_url  = $cert_file ? $cert_file['url'] : '';
+        try {
+            $cert_file = SSCV_Certificate_Engine::save_certificate_file( $cert->certificate_id );
+            $cert_url  = $cert_file ? $cert_file['url'] : '';
+        } catch ( \Throwable $e ) {
+            $warnings[] = 'HTML file generation failed';
+        }
 
         // Generate PDF
-        $pdf_result = SSCV_PDF_Generator::generate( $cert->certificate_id );
-        $pdf_url    = $pdf_result ? $pdf_result['url'] : '';
+        try {
+            $pdf_result = SSCV_PDF_Generator::generate( $cert->certificate_id );
+            $pdf_url    = $pdf_result ? $pdf_result['url'] : '';
+        } catch ( \Throwable $e ) {
+            $warnings[] = 'PDF generation failed';
+        }
 
         // Update certificate status and URLs
         $wpdb->update(
@@ -630,11 +650,20 @@ class SSCV_Ajax_Handler {
         $send_email = isset( $_POST['send_email'] ) ? intval( $_POST['send_email'] ) : 1;
         $email_msg = '';
         if ( $send_email ) {
-            SSCV_Email::send_certificate( $cert->certificate_id );
-            $email_msg = ' ' . __( 'Email sent to student.', 'skillscores-cert' );
+            try {
+                SSCV_Email::send_certificate( $cert->certificate_id );
+                $email_msg = ' ' . __( 'Email sent to student.', 'skillscores-cert' );
+            } catch ( \Throwable $e ) {
+                $email_msg = ' ' . __( 'Email sending failed.', 'skillscores-cert' );
+            }
         }
 
-        wp_send_json_success( array( 'message' => __( 'Certificate approved!', 'skillscores-cert' ) . $email_msg ) );
+        $message = __( 'Certificate approved!', 'skillscores-cert' ) . $email_msg;
+        if ( ! empty( $warnings ) ) {
+            $message .= ' (' . implode( ', ', $warnings ) . ')';
+        }
+
+        wp_send_json_success( array( 'message' => $message ) );
     }
 
     /**
