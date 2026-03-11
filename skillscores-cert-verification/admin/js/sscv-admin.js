@@ -49,22 +49,42 @@
 
             btn.prop('disabled', true).text('Processing...');
 
-            $.post(sscv_admin.ajax_url, {
-                action: 'sscv_approve_certificate',
-                nonce: sscv_admin.nonce,
-                cert_id: certId,
-                send_email: sendEmail
-            }, function(response) {
-                if (response.success) {
-                    alert(response.data.message);
-                    location.reload();
-                } else {
-                    alert(response.data.message || 'Error occurred.');
+            $.ajax({
+                url: sscv_admin.ajax_url,
+                type: 'POST',
+                timeout: 120000,
+                data: {
+                    action: 'sscv_approve_certificate',
+                    nonce: sscv_admin.nonce,
+                    cert_id: certId,
+                    send_email: sendEmail
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert(response.data && response.data.message ? response.data.message : 'Error occurred.');
+                        btn.prop('disabled', false).text('Confirm Approval');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    var msg = 'Request failed.';
+                    if (status === 'timeout') {
+                        msg = 'Request timed out. The server took too long to respond.';
+                    } else if (xhr.responseText) {
+                        try {
+                            var resp = JSON.parse(xhr.responseText);
+                            if (resp.data && resp.data.message) {
+                                msg = resp.data.message;
+                            }
+                        } catch(e) {
+                            msg = 'Server error (HTTP ' + xhr.status + '). Check PHP error logs for details.';
+                        }
+                    }
+                    alert(msg);
                     btn.prop('disabled', false).text('Confirm Approval');
                 }
-            }).fail(function() {
-                alert('Request failed. Please try again.');
-                btn.prop('disabled', false).text('Confirm Approval');
             });
         });
 

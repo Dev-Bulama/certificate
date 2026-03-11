@@ -261,7 +261,7 @@ class SSCV_PDF_Builder {
             $this->image( $local_path, $x, $y, $w, $h );
         } else {
             // Download to temp
-            $tmp = download_url( $url, 10 );
+            $tmp = download_url( $url, 5 );
             if ( ! is_wp_error( $tmp ) ) {
                 $this->image( $tmp, $x, $y, $w, $h );
                 @unlink( $tmp );

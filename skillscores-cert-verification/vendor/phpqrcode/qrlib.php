@@ -40,7 +40,7 @@ if ( ! class_exists( 'QRcode' ) ) {
             $pixel_size = max( 150, $size * 33 );
             $url = 'https://api.qrserver.com/v1/create-qr-code/?size=' . $pixel_size . 'x' . $pixel_size . '&data=' . urlencode( $text ) . '&format=png&margin=' . $margin;
 
-            $response = wp_remote_get( $url, array( 'timeout' => 15 ) );
+            $response = wp_remote_get( $url, array( 'timeout' => 5 ) );
 
             if ( is_wp_error( $response ) ) {
                 // Generate a simple placeholder PNG
