@@ -71,8 +71,8 @@ class SSCV_Ajax_Handler {
             wp_send_json_error( array( 'message' => __( 'Security verification failed.', 'skillscores-cert' ) ) );
         }
 
-        // Rate limiting
-        if ( ! SSCV_Security::check_rate_limit( 'certificate_application', 3, 3600 ) ) {
+        // Rate limiting — allow up to 30 applications per IP per hour to support shared networks
+        if ( ! SSCV_Security::check_rate_limit( 'certificate_application', 30, 3600 ) ) {
             wp_send_json_error( array( 'message' => __( 'Too many applications. Please try again later.', 'skillscores-cert' ) ) );
         }
 
